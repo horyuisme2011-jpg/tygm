@@ -1,0 +1,12 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "username": "測試光中同學",
+      "email": "112xxx@ms.gmjh.tyc.edu.tw",
+      "password_hash": "2f43be89a1", 
+      "role": "student",
+      "created_at": "2026-05-27"
+    }
+  ]
+}

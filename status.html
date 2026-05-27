@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 查詢投稿狀態 | 匿名光中</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f6f9;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            max-width: 500px;
+            width: 100%;
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-top: 40px;
+        }
+        h2 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        .btn {
+            width: 100%;
+            background-color: #2ecc71; /* 查詢頁用綠色按鈕 */
+            color: white;
+            border: none;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        /* 查詢結果顯示區塊 */
+        .result-box {
+            margin-top: 25px;
+            padding: 15px;
+            border-radius: 6px;
+            display: none; /* 預設隱藏，查到才顯示 */
+        }
+        .status-success {
+            background-color: #e8f8f5;
+            border-left: 5px solid #2ecc71;
+            color: #27ae60;
+        }
+        .status-violation {
+            background-color: #fdf2e9;
+            border-left: 5px solid #e67e22;
+            color: #d35400;
+        }
+        .nav-links {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        .nav-links a {
+            color: #4a90e2;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>🔍 投稿發送狀態查詢</h2>
+        
+        <div class="form-group">
+            <label for="searchId">請輸入您的投稿編號：</label>
+            <input type="text" id="searchId" placeholder="例如：#gm000" required>
+        </div>
+        
+        <button type="button" class="btn" onclick="checkStatus()">立即查詢進度</button>
+
+        <div id="result" class="result-box">
+            <p id="resultText"></p>
+        </div>
+
+        <div class="nav-links">
+            <a href="index.html">⬅️ 返回投稿頁面</a>
+        </div>
+    </div>
+
+    <script>
+        // 處理投稿狀態查詢的邏輯
+        function checkStatus() {
+            // 取得使用者輸入的編號，並自動去掉前後空格
+            const id = document.getElementById('searchId').value.trim();
+            const resultBox = document.getElementById('result');
+            const resultText = document.getElementById('resultText');
+            
+            // 檢查如果沒有輸入任何東西，就跳出警告
+            if (!id) {
+                alert('⚠️ 請輸入投稿編號！');
+                return;
+            }
+            
+            // 🔥 新增功能：如果輸入的是 #gm000，直接跳出你指定的彈出視窗
+            if (id === '#gm000') {
+                // 隱藏原本下方的結果框，專注顯示彈窗
+                resultBox.style.display = 'none'; 
+                
+                // 跳出你要求的彈出視窗文字
+                alert('❌ 此內容 未成功發布 因為這是測試用代碼');
+                return; // 結束執行，不往下跑了
+            }
+            
+            // 以下是原本其他編號的模擬條件，方便你帶去學校展示
+            resultBox.style.display = 'block'; // 顯示下方的結果框
+            
+            if (id.includes('123')) {
+                resultBox.className = 'result-box status-success';
+                resultText.innerHTML = `<strong>【查詢結果：已發布】</strong><br>您的貼文已通過自動審核，並已同步發表至 Instagram！`;
+            } else {
+                resultBox.className = 'result-box status-violation';
+                resultText.innerHTML = `<strong>【查詢結果：未通過】</strong><br>該投稿包含敏感詞彙或違反校規，已被系統自動攔截（違規）。`;
+            }
+        }
+    </script>

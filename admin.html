@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔒 小編後台管理系統 | 匿名光中 2.0</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f6f9;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        /* 後台主卡片 */
+        .admin-login-card {
+            max-width: 420px;
+            width: 100%;
+            background: #ffffff;
+            padding: 40px 35px;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+            box-sizing: border-box;
+            border-top: 6px solid #4a90e2;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* 各個面板（透過 JS 切換顯示） */
+        .admin-panel {
+            display: none;
+        }
+        .admin-panel.active {
+            display: block;
+            animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .admin-header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .admin-header h1 {
+            color: #4a90e2;
+            font-size: 26px;
+            margin: 0 0 8px 0;
+        }
+
+        .admin-header p {
+            color: #777;
+            font-size: 14px;
+            margin: 0;
+        }
+
+        /* 網頁內嵌式提示欄 */
+        .alert-box {
+            padding: 12px 15px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 20px;
+            display: none; 
+            line-height: 1.5;
+        }
+        .alert-box.success {
+            display: block;
+            background-color: #e6f4ea;
+            color: #137333;
+            border-left: 4px solid #1e8e3e;
+        }
+        .alert-box.danger {
+            display: block;
+            background-color: #fce8e6;
+            color: #c5221f;
+            border-left: 4px solid #d93025;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #444;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 15px;
+            transition: all 0.3s ease;
+            background-color: #fafafa;
+        }
+
+        input:focus {
+            border-color: #4a90e2;
+            background-color: #ffffff;
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.15);
+            outline: none;
+        }
+
+        /* 按鈕風格 */
+        .admin-btn {
+            width: 100%;
+            background-color: #4a90e2;
+            color: white;
+            border: none;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 5px;
+            box-shadow: 0 4px 10px rgba(74, 144, 226, 0.2);
+        }
+        .admin-btn:hover { background-color: #357abd; }
+        .admin-btn:active { transform: scale(0.98); }
+
+        /* 連結樣式 */
+        .admin-sub-links {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            font-size: 13px;
+        }
+        .admin-sub-links a {
+            color: #4a90e2;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .admin-sub-links a:hover {
+            text-decoration: underline;
+        }
+
+        .back-to-home {
+            text-align: center;
+            margin-top: 30px;
+            font-size: 14px;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+        .back-to-home a {
+            color: #666;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .back-to-home a:hover { color: #4a90e2; }
+
+        @media (max-width: 480px) {
+            body { padding: 15px; }
+            .admin-login-card { padding: 30px 20px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="admin-login-card">
+
+        <div class="admin-panel active" id="panelLogin">
+            <div class="admin-header">
+                <h1>🔒 小編管理後台</h1>
+                <p>請輸入管理員憑證以進入審核系統</p>
+            </div>
+
+            <div class="alert-box" id="loginAlert"></div>
+
+            <form id="adminLoginForm">
+                <div class="form-group">
+                    <label>👤 管理員帳號</label>
+                    <input type="text" id="adminUser" placeholder="請輸入管理帳號" required>
+                </div>
+                <div class="form-group">
+                    <label>🔑 安全密碼</label>
+                    <input type="password" id="adminPass" placeholder="請輸入最高權限密碼" required>
+                </div>
+                <button type="submit" class="admin-btn">進入管理系統</button>
+            </form>
+
+            <div class="admin-sub-links">
+                <a onclick="switchPanel('panelForgot')">❓ 忘記後台密碼</a>
+                <span style="color:#ccc;">|</span>
+                <a href="index.html">🌐 回投稿首頁</a>
+            </div>
+        </div>
+
+        <div class="admin-panel" id="panelForgot">
+            <div class="admin-header">
+                <h1>❓ 重設管理密碼</h1>
+                <p>請驗證最高管理員繫結的安全信箱</p>
+            </div>
+
+            <div class="alert-box" id="forgotAlert"></div>
+
+            <form id="adminForgotForm">
+                <div class="form-group">
+                    <label>📧 官方管理信箱</label>
+                    <input type="email" id="adminEmail" placeholder="example@ms.gmjh.tyc.edu.tw" required>
+                </div>
+                <button type="button" class="admin-btn" style="background-color: #5cb85c; box-shadow: 0 4px 10px rgba(92,184,92,0.2);" onclick="sendAdminCode()">發送管理員重設碼</button>
+                
+                <div class="form-group" style="margin-top: 15px;">
+                    <label>輸入重設驗證碼</label>
+                    <input type="text" id="adminVerifyCode" placeholder="請檢查您的安全信箱">
+                </div>
+                <button type="submit" class="admin-btn">驗證並重設</button>
+            </form>
+
+            <div class="admin-sub-links" style="justify-content: center;">
+                <a onclick="switchPanel('panelLogin')">⬅️ 返回管理員登入</a>
+            </div>
+        </div>
+
+        <div class="back-to-home">
+            <a href="index.html">🏫 離開後台，回到光中匿名首頁</a>
+        </div>
+    </div>
+
+    <script>
+        // 切換面板控制 (登入 <-> 忘記密碼)
+        function switchPanel(panelId) {
+            document.querySelectorAll('.admin-panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.alert-box').forEach(b => b.style.display = 'none');
+            document.getElementById(panelId).classList.add('active');
+        }
+
+        // 處理【管理員登入提交】
+        document.getElementById('adminLoginForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            const inputUser = document.getElementById('adminUser').value;
+            const inputPass = document.getElementById('adminPass').value;
+            const alertBox = document.getElementById('loginAlert');
+
+            // 1. 讀取同目錄下的 pass.json 檔案
+            fetch('./pass.json')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error("無法讀取驗證檔，請確認 pass.json 是否存在！");
+                    }
+                    return response.json();
+                })
+                .then(realAccountData => {
+                    // 2. 安全比對 pass.json 內的真實密碼
+                    if (inputUser === realAccountData.adminUser && inputPass === realAccountData.adminPass) {
+                        
+                        // 顯示高質感的綠色成功欄位
+                        alertBox.className = "alert-box success";
+                        alertBox.innerHTML = "🎉 <b>身分驗證成功！</b> 正在為您分發安全憑證並跳轉後台...";
+                        
+                        // ✨ 核心邏輯：發放通行證憑證
+                        sessionStorage.setItem('adminToken', 'true');
+                        
+                        // 延遲 0.8 秒給予視覺反饋，隨即滑順跳轉至 admincenter.html
+                        setTimeout(() => {
+                            window.location.href = 'admincenter.html';
+                        }, 800);
+
+                    } else {
+                        // 密碼錯誤，滑出網頁內嵌紅色警告
+                        alertBox.className = "alert-box danger";
+                        alertBox.innerHTML = "❌ <b>登入失敗：</b> 管理員帳號或密碼錯誤。";
+                    }
+                })
+                .catch(error => {
+                    console.error(error);
+                    alertBox.className = "alert-box danger";
+                    alertBox.innerHTML = `⚠️ <b>系統錯誤：</b> ${error.message}`;
+                });
+            
+            // 防呆清空
+            document.getElementById('adminPass').value = '';
+        });
+
+        // 處理【發送管理員驗證碼按鈕】
+        function sendAdminCode() {
+            const email = document.getElementById('adminEmail').value;
+            const alertBox = document.getElementById('forgotAlert');
+
+            if(!email) {
+                alertBox.className = "alert-box danger";
+                alertBox.innerHTML = "⚠️ <b>錯誤：</b> 請先輸入正確的 Email 地址！";
+                return;
+            }
+
+            alertBox.className = "alert-box success";
+            alertBox.innerHTML = `✉️ <b>發送成功！</b><br>安全驗證碼已寄至 <b>${email}</b>。<br><span style='font-size:12px;'>請於 10 分鐘內輸入完畢。</span>`;
+        }
+
+        // 處理【忘記密碼表單驗證送出】
+        document.getElementById('adminForgotForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const alertBox = document.getElementById('forgotAlert');
+            const code = document.getElementById('adminVerifyCode').value;
+
+            if(!code) {
+                alertBox.className = "alert-box danger";
+                alertBox.innerHTML = "⚠️ <b>請輸入驗證碼！</b>";
+                return;
+            }
+
+            alertBox.className = "alert-box success";
+            alertBox.innerHTML = "🔒 <b>安全認證通過！</b><br>重設密碼的專屬權限連結已啟用，請至信箱確認。";
+        });
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📢 匿名光中 | 全新投稿系統</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f6f9;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        /* 左上角控制區塊 */
+        .top-left-controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 10;
+        }
+
+        .login-btn, .help-btn {
+            background-color: #ffffff;
+            color: #4a90e2;
+            border: 2px solid #4a90e2;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .login-btn { padding: 8px 16px; font-size: 14px; border-radius: 6px; }
+        .help-btn { width: 35px; height: 35px; font-size: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 0; }
+        .login-btn:hover, .help-btn:hover { background-color: #4a90e2; color: white; }
+
+        .logo-container { margin-top: 20px; margin-bottom: 10px; text-align: center; }
+        .logo-container img { height: 60px; width: auto; max-width: 100%; }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            box-sizing: border-box;
+            margin-bottom: 40px;
+        }
+
+        h1 { color: #4a90e2; text-align: center; margin-bottom: 10px; }
+        .notice { background-color: #eef5fc; border-left: 5px solid #4a90e2; padding: 15px; margin-bottom: 25px; border-radius: 4px; font-size: 14px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; font-weight: bold; margin-bottom: 8px; }
+        textarea, input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+        textarea { height: 150px; resize: vertical; }
+        
+        .btn { width: 100%; background-color: #4a90e2; color: white; border: none; padding: 14px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; transition: background 0.3s; }
+        .btn:hover { background-color: #357abd; }
+        
+        /* 學校電子郵件專用欄位並排樣式 */
+        .email-input-group { display: flex; align-items: center; gap: 8px; }
+        .email-suffix { font-size: 14px; color: #666; font-weight: bold; white-space: nowrap; background: #eee; padding: 12px; border-radius: 6px; border: 1px solid #ddd; }
+        
+        /* 驗證碼發送排版 */
+        .verify-group { display: flex; gap: 10px; }
+        .verify-btn { background: #5cb85c; color: white; border: none; padding: 0 15px; border-radius: 6px; cursor: pointer; white-space: nowrap; font-weight: bold; }
+        .verify-btn:hover { background: #4cae4c; }
+
+        .footer-links { text-align: center; margin-top: 20px; font-size: 14px; }
+        .footer-links a { color: #4a90e2; text-decoration: none; margin: 0 10px; }
+
+        /* ==========================================================================
+           ✨ 彈出式視窗 (Modal) 樣式表
+           ========================================================================== */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+
+        .modal-card {
+            background: #ffffff;
+            width: 100%;
+            max-width: 450px; /* 稍微寬一點讓說明文字比較好讀 */
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            box-sizing: border-box;
+            position: relative;
+            display: none; 
+        }
+        .modal-card.active { display: block; animation: slideUp 0.3s ease; }
+
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px; right: 15px;
+            font-size: 22px; color: #999;
+            cursor: pointer; border: none; background: none;
+        }
+        .modal-close:hover { color: #333; }
+        
+        .modal-card h2 { color: #4a90e2; margin-top: 0; text-align: center; margin-bottom: 20px; }
+        .modal-card .form-group { margin-bottom: 15px; }
+        .modal-card input { padding: 10px; font-size: 15px; }
+        
+        /* 說明視窗專用的文字排版 */
+        .help-content-box {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #4a5568;
+            white-space: pre-wrap; /* 保持 JSON 裡面的換行格式 */
+            max-height: 300px;
+            overflow-y: auto; /* 內容太多時可以滾動 */
+        }
+
+        .modal-sub-links { display: flex; justify-content: space-between; margin-top: 15px; font-size: 13px; }
+        .modal-sub-links a { color: #4a90e2; text-decoration: none; cursor: pointer; }
+        .modal-sub-links a:hover { text-decoration: underline; }
+
+        /* 📱 響應式排版 (RWD) */
+        @media (max-width: 768px) {
+            body { padding: 10px; padding-top: 70px; }
+            .top-left-controls { top: 10px; left: 10px; gap: 6px; }
+            .login-btn { padding: 6px 12px; font-size: 13px; }
+            .help-btn { width: 30px; height: 30px; font-size: 14px; }
+            .logo-container img { height: 45px; }
+            .container { padding: 20px; border-radius: 8px; }
+            h1 { font-size: 24px; }
+            .footer-links a { display: inline-block; margin: 5px 10px; }
+            .modal-card { max-width: 90%; padding: 20px; }
+            .email-suffix { padding: 10px; font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="top-left-controls">
+        <button class="login-btn" id="loginBtn">🔑 登入</button>
+        <button class="help-btn" id="helpBtn">?</button>
+    </div>
+
+    <div class="logo-container">
+        <img src="logo.png" alt="學校 Logo">
+    </div>
+
+    <div class="container">
+        <h1>匿名光中 2.0</h1>
+        <p style="text-align: center; color: #666;">安全、直覺、全新的匿名交流空間</p>
+
+        <div class="notice">
+            <strong id="noticeTitle">正在讀取設定檔...</strong>
+            <p id="noticeContent" style="margin: 5px 0 0 0; color: #666;">請稍候</p>
+        </div>
+
+        <form id="postForm">
+            <div class="form-group">
+                <label for="postContent">✍️ 投稿內容：</label>
+                <textarea id="postContent" placeholder="請在此輸入你想說的話...（圖片將會自動生成）" required></textarea>
+            </div>
+            <button type="submit" class="btn">🚀 匿名送出投稿</button>
+        </form>
+
+        <div class="footer-links">
+            <a href="status.html">🔍 查詢投稿狀態</a> | 
+            <a href="admin.html">🔒 小編後台</a>
+        </div>
+    </div>
+
+
+    <div class="modal-overlay" id="modalOverlay">
+        
+        <div class="modal-card" id="cardLogin">
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <h2>🔑 用戶登入</h2>
+            <form id="subFormLogin">
+                <div class="form-group">
+                    <label>使用者帳號 / Email</label>
+                    <input type="text" id="loginUser" placeholder="請輸入帳號" required>
+                </div>
+                <div class="form-group">
+                    <label>密碼</label>
+                    <input type="password" id="loginPass" placeholder="請輸入密碼" required>
+                </div>
+                <button type="submit" class="btn" style="padding: 10px;">確認登入</button>
+            </form>
+            <div class="modal-sub-links">
+                <a onclick="switchCard('cardForgot')">❓ 忘記密碼</a>
+                <a onclick="switchCard('cardRegister')">✨ 註冊新帳號</a>
+            </div>
+        </div>
+
+        <div class="modal-card" id="cardForgot">
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <h2>❓ 找回密碼</h2>
+            <form id="subFormForgot">
+                <div class="form-group">
+                    <label>學校電子郵件</label>
+                    <div class="email-input-group">
+                        <input type="text" id="forgotEmailPrefix" placeholder="學號/帳號" required>
+                        <span class="email-suffix">.ms.gmjh.tyc.edu.tw</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>驗證碼</label>
+                    <div class="verify-group">
+                        <input type="text" id="forgotVerifyCode" placeholder="請輸入驗證碼" required>
+                        <button type="button" class="verify-btn" onclick="sendCode('forgot')">發送驗證碼</button>
+                    </div>
+                </div>
+                <button type="submit" class="btn" style="padding: 10px; background-color: #5cb85c;">驗證並送出</button>
+            </form>
+            <div class="modal-sub-links">
+                <a onclick="switchCard('cardLogin')">⬅️ 返回登入</a>
+            </div>
+        </div>
+
+        <div class="modal-card" id="cardRegister">
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <h2>✨ 註冊帳號</h2>
+            <form id="subFormRegister">
+                <div class="form-group">
+                    <label>用戶名稱 (暱稱)</label>
+                    <input type="text" id="regName" placeholder="例如：光中帥哥" required>
+                </div>
+                <div class="form-group">
+                    <label>學校電子郵件</label>
+                    <div class="email-input-group">
+                        <input type="text" id="regEmailPrefix" placeholder="請輸入學號" required>
+                        <span class="email-suffix">.ms.gmjh.tyc.edu.tw</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>驗證碼</label>
+                    <div class="verify-group">
+                        <input type="text" id="regVerifyCode" placeholder="請輸入驗證碼" required>
+                        <button type="button" class="verify-btn" onclick="sendCode('reg')">發送驗證碼</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>設定密碼</label>
+                    <input type="password" id="regPass" placeholder="請輸入密碼" required>
+                </div>
+                <div class="form-group">
+                    <label>再次確認密碼</label>
+                    <input type="password" id="regPassConfirm" placeholder="請再次輸入密碼" required>
+                </div>
+                <button type="submit" class="btn" style="padding: 10px;">提交註冊</button>
+            </form>
+            <div class="modal-sub-links">
+                <a onclick="switchCard('cardLogin')">⬅️ 已有帳號？去登入</a>
+            </div>
+        </div>
+
+        <div class="modal-card" id="cardHelp">
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <h2 id="modalHelpTitle">💡 使用幫助</h2>
+            <div class="help-content-box" id="modalHelpContent">
+                說明載入中...
+            </div>
+            <button class="btn" style="padding: 10px; margin-top: 15px;" onclick="closeModal()">我知道了</button>
+        </div>
+
+    </div>
+
+    <script>
+        let configData = {};
+
+        // 讀取外部配置 JSON 檔案
+        function loadConfig() {
+            fetch('./login_question.json')
+                .then(response => response.ok ? response.json() : null)
+                .then(data => {
+                    if(data) {
+                        configData = data;
+                        document.getElementById('noticeTitle').innerText = data.noticeTitle;
+                        document.getElementById('noticeContent').innerText = data.noticeContent;
+                    }
+                })
+                .catch(err => {
+                    console.log("JSON讀取失敗，使用備用文字");
+                    configData = {
+                        "noticeTitle": "📢 投稿規範與維護公告：",
+                        "noticeContent": "請勿包含人身攻擊、洩漏個資或違反校規之內容。",
+                        "helpTitle": "💡 匿名光中 2.0 使用幫助",
+                        "helpContent": "1. 為什麼要登入？\n登入後可解鎖更多校園專屬功能。\n\n2. 匿名性保證：\n本站採用去識別化技術，小編與後台絕對無法查閱您的投稿身分，請安心發言！"
+                    };
+                    document.getElementById('noticeTitle').innerText = configData.noticeTitle;
+                    document.getElementById('noticeContent').innerText = configData.noticeContent;
+                });
+        }
+        window.onload = loadConfig;
+
+        /* --------------------------------------------------------------------------
+           ✨ Modal 控制：切換、打開、關閉
+           -------------------------------------------------------------------------- */
+        const overlay = document.getElementById('modalOverlay');
+        
+        // 點左上角登入
+        document.getElementById('loginBtn').addEventListener('click', () => {
+            overlay.classList.add('active');
+            switchCard('cardLogin');
+        });
+
+        // ✨ 點左上角問號：改為打開說明卡片，並注入 JSON 文字
+        document.getElementById('helpBtn').addEventListener('click', () => {
+            document.getElementById('modalHelpTitle').innerText = configData.helpTitle || "💡 使用幫助";
+            document.getElementById('modalHelpContent').innerText = configData.helpContent || "暫無說明內容。";
+            
+            overlay.classList.add('active');
+            switchCard('cardHelp');
+        });
+
+        // 點擊空白處關閉
+        overlay.addEventListener('click', (e) => {
+            if(e.target === overlay) closeModal();
+        });
+
+        function closeModal() {
+            overlay.classList.remove('active');
+        }
+
+        // 切換不同的卡片 (Login, Forgot, Register, Help)
+        function switchCard(cardId) {
+            document.querySelectorAll('.modal-card').forEach(card => card.classList.remove('active'));
+            document.getElementById(cardId).classList.add('active');
+        }
+
+        /* --------------------------------------------------------------------------
+           ⚡ 表單動作模擬與資料格式化
+           -------------------------------------------------------------------------- */
+        
+        // 發送驗證碼函式
+        function sendCode(type) {
+            let prefix = type === 'reg' ? document.getElementById('regEmailPrefix').value : document.getElementById('forgotEmailPrefix').value;
+            if(!prefix) {
+                alert("請先輸入學校信箱帳號/學號！");
+                return;
+            }
+            let fullEmail = prefix + ".ms.gmjh.tyc.edu.tw";
+            alert(`【驗證碼系統】\n已成功將驗證碼發送到：\n${fullEmail}\n\n(請至學校 Gmail 信箱收信，Google API 後續串接中)`);
+        }
+
+        // 監聽【1. 登入提交】（前台密碼成功後跳轉到 user.html）
+        document.getElementById('subFormLogin').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const inputUser = document.getElementById('loginUser').value;
+            const inputPass = document.getElementById('loginPass').value;
+            
+            // 這裡抓取你設定好的密碼檔（例如 pass.json）
+            fetch('./pass.json')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error("無法讀取驗證設定檔");
+                    }
+                    return response.json();
+                })
+                .then(accountData => {
+                    // 驗證輸入的帳密是否與 pass.json 內的 adminUser 與 adminPass 相符
+                    // (以後如果要分一般用戶，可以在 JSON 裡面加欄位，目前先依據你的設定檔比對)
+                    if (inputUser === accountData.adminUser && inputPass === accountData.adminPass) {
+                        
+                        // 鎖定登入按鈕，避免重複點擊
+                        const loginSubmitBtn = document.querySelector('#subFormLogin button[type="submit"]');
+                        if(loginSubmitBtn) {
+                            loginSubmitBtn.innerText = "🚀 驗證成功，跳轉中...";
+                            loginSubmitBtn.style.backgroundColor = "#5cb85c";
+                            loginSubmitBtn.disabled = true;
+                        }
+
+                        // 延遲 0.5 秒讓使用者看到成功狀態，隨即直接跳轉到 user.html
+                        setTimeout(() => {
+                            window.location.href = 'user.html';
+                        }, 500);
+
+                    } else {
+                        // 密碼錯誤時，直接運用現有的說明卡片框架來顯示錯誤，絕對不彈窗
+                        document.getElementById('modalHelpTitle').innerText = "❌ 登入失敗";
+                        document.getElementById('modalHelpContent').innerText = "您輸入的帳號或密碼不正確，請重新檢查。";
+                        switchCard('cardHelp');
+                    }
+                })
+                .catch(error => {
+                    console.error(error);
+                    document.getElementById('modalHelpTitle').innerText = "⚠️ 系統錯誤";
+                    document.getElementById('modalHelpContent').innerText = "無法連線至驗證伺服器，請確保 pass.json 存在且格式正確。";
+                    switchCard('cardHelp');
+                });
+
+            // 清空密碼欄位防呆
+            document.getElementById('loginPass').value = '';
+        });
+
+        // 監聽【2. 忘記密碼提交】
+        document.getElementById('subFormForgot').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const forgotData = {
+                action: "forgot_password",
+                email: document.getElementById('forgotEmailPrefix').value + ".ms.gmjh.tyc.edu.tw",
+                code: document.getElementById('forgotVerifyCode').value
+            };
+            alert(`驗證碼成功！新密碼重設信已發送至：\n${forgotData.email}`);
+            switchCard('cardLogin');
+        });
+
+        // 監聽【3. 註冊提交】
+        document.getElementById('subFormRegister').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const pass = document.getElementById('regPass').value;
+            const passConfirm = document.getElementById('regPassConfirm').value;
+            
+            if(pass !== passConfirm) {
+                alert("❌ 錯誤：兩次輸入的密碼不一致，請重新檢查！");
+                return;
+            }
+
+            const registerData = {
+                action: "register",
+                username: document.getElementById('regName').value,
+                email: document.getElementById('regEmailPrefix').value + ".ms.gmjh.tyc.edu.tw",
+                verifyCode: document.getElementById('regVerifyCode').value,
+                password: pass 
+            };
+            alert(`🎉 註冊資料驗證成功！`);
+            closeModal();
+        });
+        
+        // 投稿送出
+        document.getElementById('postForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            alert('投稿成功！(功能開發中)');
+            document.getElementById('postContent').value = '';
+        });
+    </script>
+</body>
+</html>

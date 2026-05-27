@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>👤 學生會員中心 | 匿名光中 2.0</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f6f9;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        /* 頂部用戶資訊列 */
+        .user-header-bar {
+            max-width: 800px;
+            width: 100%;
+            background: #ffffff;
+            padding: 15px 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-sizing: border-box;
+            margin-bottom: 20px;
+            border-left: 5px solid #4a90e2;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: bold;
+            color: #4a90e2;
+        }
+
+        .logout-btn {
+            background-color: #fff;
+            color: #e06666;
+            border: 1px solid #e06666;
+            padding: 6px 14px;
+            font-size: 13px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .logout-btn:hover {
+            background-color: #e06666;
+            color: white;
+        }
+
+        /* 主功能貨櫃 */
+        .main-container {
+            max-width: 800px;
+            width: 100%;
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            box-sizing: border-box;
+        }
+
+        /* 頁籤導覽列 (Tabs) */
+        .tabs-nav {
+            display: flex;
+            gap: 10px;
+            border-bottom: 2px solid #eef2f5;
+            padding-bottom: 10px;
+            margin-bottom: 25px;
+        }
+
+        .tab-link {
+            background: none;
+            border: none;
+            padding: 10px 20px;
+            font-size: 15px;
+            font-weight: bold;
+            color: #666;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .tab-link:hover {
+            background-color: #f0f4f8;
+            color: #4a90e2;
+        }
+
+        .tab-link.active {
+            background-color: #4a90e2;
+            color: white;
+        }
+
+        /* 功能面板 */
+        .content-panel {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        .content-panel.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h2 {
+            color: #4a90e2;
+            margin-top: 0;
+            font-size: 20px;
+            margin-bottom: 15px;
+        }
+
+        /* 網頁內嵌式提示欄 */
+        .alert-box {
+            padding: 12px 15px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 20px;
+            display: none;
+            line-height: 1.5;
+        }
+        .alert-box.success { display: block; background-color: #e6f4ea; color: #137333; border-left: 4px solid #1e8e3e; }
+        .alert-box.danger { display: block; background-color: #fce8e6; color: #c5221f; border-left: 4px solid #d93025; }
+
+        /* 表單與表格樣式 */
+        .form-group { margin-bottom: 18px; }
+        label { display: block; font-weight: bold; margin-bottom: 6px; font-size: 14px; }
+        input, textarea { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 15px; }
+        
+        .btn { background-color: #4a90e2; color: white; border: none; padding: 12px 20px; font-size: 15px; font-weight: bold; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
+        .btn:hover { background-color: #357abd; }
+
+        /* 數據表格樣式 */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background-color: #f8fafc; color: #444; }
+        
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .badge.success { background-color: #e6f4ea; color: #137333; }
+        .badge.warning { background-color: #fef7e0; color: #b06000; }
+
+        @media (max-width: 600px) {
+            .tabs-nav { flex-direction: column; gap: 5px; }
+            .tab-link { text-align: left; padding: 8px 12px; }
+            th, td { padding: 8px; font-size: 13px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="user-header-bar">
+        <div class="user-info">
+            <span>👤 歡迎回來，光中同學</span>
+        </div>
+        <button class="logout-btn" id="logoutBtn">登出系統</button>
+    </div>
+
+    <div class="main-container">
+        
+        <div class="tabs-nav">
+            <button class="tab-link active" onclick="switchTab(event, 'panelPosts')">📋 我的投稿</button>
+            <button class="tab-link" onclick="switchTab(event, 'panelDelete')">🗑️ 申請撤文</button>
+            <button class="tab-link" onclick="switchTab(event, 'panelPassword')">⚙️ 修改密碼</button>
+        </div>
+
+        <div class="alert-box" id="userAlert"></div>
+
+        <div class="content-panel active" id="panelPosts">
+            <h2>📋 您的歷史投稿紀錄</h2>
+            <p style="color:#777; font-size:14px; margin-top:0;">（此處僅顯示連動此帳號後送出的匿名投稿紀錄）</p>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>投稿編號</th>
+                        <th>內容摘要</th>
+                        <th>目前狀態</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>#GMJH-5021</td>
+                        <td>今天午餐的桶餐肉片超大塊...</td>
+                        <td><span class="badge success">已發布</span></td>
+                    </tr>
+                    <tr>
+                        <td>#GMJH-5048</td>
+                        <td>有人撿到藍色的原子筆嗎？在二樓...</td>
+                        <td><span class="badge warning">審核中</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="content-panel" id="panelDelete">
+            <h2>🗑️ 快速撤銷匿名文章申請</h2>
+            <form id="deleteForm">
+                <div class="form-group">
+                    <label>請選擇或輸入要撤銷的文章編號</label>
+                    <input type="text" id="deletePostId" placeholder="例如：#GMJH-5021" required>
+                </div>
+                <div class="form-group">
+                    <label>請簡述撤文理由（僅供後台小編核對）</label>
+                    <textarea id="deleteReason" placeholder="例如：不小心打錯字、內容有誤等..." style="height: 100px;" required></textarea>
+                </div>
+                <button type="submit" class="btn" style="background-color: #d93025;">提交撤文申請</button>
+            </form>
+        </div>
+
+        <div class="content-panel" id="panelPassword">
+            <h2>⚙️ 修改您的登入密碼</h2>
+            <form id="passwordForm">
+                <div class="form-group">
+                    <label>輸入目前舊密碼</label>
+                    <input type="password" id="oldPass" required>
+                </div>
+                <div class="form-group">
+                    <label>設定全新密碼</label>
+                    <input type="password" id="newPass" required>
+                </div>
+                <div class="form-group">
+                    <label>再次確認全新密碼</label>
+                    <input type="password" id="confirmNewPass" required>
+                </div>
+                <button type="submit" class="btn">確認更新密碼</button>
+            </form>
+        </div>
+
+    </div>
+
+    <script>
+        const alertBox = document.getElementById('userAlert');
+
+        // 1. 頁籤切換控制
+        function switchTab(event, panelId) {
+            // 切換按鈕 active 樣式
+            document.querySelectorAll('.tab-link').forEach(btn => btn.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+
+            // 切換面板顯示
+            document.querySelectorAll('.content-panel').forEach(panel => panel.classList.remove('active'));
+            document.getElementById(panelId).classList.add('active');
+
+            // 切換頁籤時順便隱藏先前的提示框
+            alertBox.style.display = 'none';
+        }
+
+        // 2. 監聽【撤文表單提交】
+        document.getElementById('deleteForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const postId = document.getElementById('deletePostId').value;
+            
+            // 內嵌成功提示
+            alertBox.className = "alert-box success";
+            alertBox.innerHTML = `🗑️ <b>申請成功送出！</b><br>文章編號 <b>${postId}</b> 的撤文申請已派發給管理員，請稍候。`;
+            
+            // 清空輸入框
+            document.getElementById('deletePostId').value = '';
+            document.getElementById('deleteReason').value = '';
+        });
+
+        // 3. 監聽【密碼修改表單提交】
+        document.getElementById('passwordForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const oldPass = document.getElementById('oldPass').value;
+            const newPass = document.getElementById('newPass').value;
+            const confirmNewPass = document.getElementById('confirmNewPass').value;
+
+            if (newPass !== confirmNewPass) {
+                alertBox.className = "alert-box danger";
+                alertBox.innerHTML = "❌ <b>修改失敗：</b> 兩次輸入的新密碼不一致！";
+                return;
+            }
+
+            // 模擬修改成功
+            alertBox.className = "alert-box success";
+            alertBox.innerHTML = "🎉 <b>密碼修改成功！</b> 下次登入請記得使用新密碼。";
+
+            // 清空輸入框
+            document.getElementById('oldPass').value = '';
+            document.getElementById('newPass').value = '';
+            document.getElementById('confirmNewPass').value = '';
+        });
+
+        // 4. 監聽【登出按鈕】
+        document.getElementById('logoutBtn').addEventListener('click', function() {
+            // 登出也不用彈窗，按下去後直接清除狀態（可自行追加清除 LocalStorage）並返回首頁
+            window.location.href = 'index.html';
+        });
+    </script>
+</body>
+</html>

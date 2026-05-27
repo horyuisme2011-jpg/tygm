@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚙️ 小編核心控制台 | 匿名光中 2.0</title>
+    <style>
+        :root {
+            --primary-color: #4a90e2;
+            --danger-color: #ef4444;
+            --success-color: #22c55e;
+            --warning-color: #f59e0b;
+            --dark-bg: #1e293b;
+            --body-bg: #f1f5f9;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--body-bg);
+            color: #333;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* ==========================================================================
+           🚨 安全網址防跑攔截 (無彈窗安全鎖)
+           ========================================================================== */
+        .security-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .security-overlay.active { opacity: 1; pointer-events: auto; }
+        .security-card {
+            background: #ffffff; width: 90%; max-width: 400px; padding: 30px; border-radius: 12px; text-align: center; border-top: 6px solid var(--danger-color);
+        }
+        .security-btn {
+            width: 100%; background-color: var(--dark-bg); color: white; border: none; padding: 12px;
+            font-size: 15px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-top: 15px;
+        }
+
+        /* ==========================================================================
+           左側獨立大選單
+           ========================================================================== */
+        .sidebar {
+            width: 260px;
+            background-color: var(--dark-bg);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+            position: fixed;
+            top: 0; bottom: 0; left: 0;
+        }
+
+        .sidebar-title {
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #334155;
+        }
+
+        .menu-btn {
+            width: 100%;
+            background-color: #334155;
+            color: #cbd5e1;
+            border: none;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: bold;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .menu-btn:hover { background-color: #475569; color: white; }
+        .menu-btn.active { background-color: var(--primary-color); color: white; box-shadow: 0 4px 10px rgba(74, 144, 226, 0.3); }
+
+        .logout-box { margin-top: auto; padding-top: 20px; border-top: 1px solid #334155; }
+        .btn-logout { width: 100%; background: transparent; color: #ff6b6b; border: 1px solid #ff6b6b; padding: 12px; font-weight: bold; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+        .btn-logout:hover { background: #ff6b6b; color: white; }
+
+        /* ==========================================================================
+           右側主內容顯示區
+           ========================================================================== */
+        .main-content {
+            margin-left: 260px;
+            padding: 40px;
+            width: calc(100% - 260px);
+            box-sizing: border-box;
+        }
+
+        .function-block {
+            display: none;
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            animation: panelFade 0.3s ease forwards;
+        }
+        .function-block.active { display: block; }
+
+        @keyframes panelFade {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        #block-review { border-top: 5px solid var(--primary-color); }
+        #block-admin { border-top: 5px solid var(--success-color); }
+        #block-archive { border-top: 5px solid var(--dark-bg); }
+        #block-notice { border-top: 5px solid var(--warning-color); }
+
+        h2 { color: #1e293b; margin-top: 0; font-size: 22px; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #f1f5f9; }
+
+        /* 網頁內嵌提示欄 */
+        .alert-box { padding: 12px 15px; border-radius: 6px; font-size: 14px; font-weight: 500; margin-bottom: 20px; display: none; line-height: 1.5; }
+        .alert-box.success { display: block; background-color: #e6f4ea; color: #137333; border-left: 4px solid var(--success-color); }
+
+        /* 表單與通用元素 */
+        .form-group { margin-bottom: 18px; }
+        label { display: block; font-weight: bold; margin-bottom: 8px; font-size: 14px; color: #475569; }
+        input, textarea, select { width: 100%; padding: 11px 14px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-size: 14px; background-color: #f8fafc; }
+        input:focus, textarea:focus, select:focus { border-color: var(--primary-color); outline: none; background-color: #fff; box-shadow: 0 0 0 3px rgba(74,144,226,0.15); }
+        
+        .btn-submit { color: white; border: none; padding: 12px 24px; font-size: 15px; font-weight: bold; border-radius: 6px; cursor: pointer; transition: opacity 0.2s; width: 100%; }
+        .btn-submit:hover { opacity: 0.9; }
+
+        /* ==========================================================================
+           ✨ 新增管理員專屬的雙欄排版 (Flex 格局)
+           ========================================================================== */
+        .admin-manager-grid {
+            display: flex;
+            gap: 35px;
+            align-items: flex-start;
+        }
+        
+        /* 左半邊表單 */
+        .admin-form-side {
+            flex: 1;
+            background-color: #fff;
+        }
+
+        /* 右半邊帳號名冊列表 */
+        .admin-list-side {
+            flex: 1.3; /* 讓列表稍微寬一點，比較好容納表格 */
+            background-color: #f8fafc;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+        }
+        .admin-list-side h3 { margin-top: 0; color: #334155; font-size: 16px; margin-bottom: 15px; display: flex; align-items: center; gap: 5px; }
+
+        /* 貼文卡片與表格 */
+        .post-card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; background: #fff; }
+        .post-meta { display: flex; justify-content: space-between; font-size: 13px; color: #64748b; margin-bottom: 10px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 8px; }
+        .action-group { display: flex; gap: 10px; justify-content: flex-end; margin-top: 15px; }
+        .btn-review { border: none; padding: 8px 16px; font-size: 13px; font-weight: bold; border-radius: 6px; cursor: pointer; color: white; }
+
+        /* 表格精細化調整 */
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
+        th { background-color: #edd; color: #475569; font-weight: bold; background-color: #edf2f7; }
+        
+        .badge { padding: 3px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        .badge.admin-root { background-color: #fee2e2; color: #ef4444; }
+        .badge.admin-sub { background-color: #e0f2fe; color: #0284c7; }
+
+        @media (max-width: 992px) {
+            .admin-manager-grid { flex-direction: column; }
+            .admin-form-side, .admin-list-side { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="security-overlay" id="secureOverlay">
+        <div class="security-card">
+            <h3 style="color:var(--danger-color); margin:0 0 10px 0;">⚠️ 存取遭拒</h3>
+            <p style="color:#475569; font-size:14px;">本頁面為核心管理專區，系統偵測到您尚未登入。</p>
+            <button class="security-btn" onclick="redirectToLogin()">確定，前往登入</button>
+        </div>
+    </div>
+
+    <div class="sidebar">
+        <div class="sidebar-title">⚙️ 小編控制台按鈕選單</div>
+        <button id="btnReview" class="menu-btn active" onclick="showBlock('block-review', 'btnReview')">📢 審核匿名貼文</button>
+        <button id="btnAddAdmin" class="menu-btn" onclick="showBlock('block-admin', 'btnAddAdmin')">👤 新增管理員</button>
+        <button id="btnArchive" class="menu-btn" onclick="showBlock('block-archive', 'btnArchive')">📦 進入封存中心</button>
+        <button id="btnNotice" class="menu-btn" onclick="showBlock('block-notice', 'btnNotice')">🔔 發布首頁公告</button>
+        <div class="logout-box">
+            <button class="btn-logout" onclick="adminLogout()">登出管理系統 🚪</button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        
+        <div class="alert-box" id="centerAlert"></div>
+
+        <div class="function-block active" id="block-review">
+            <h2>📢 待審核投稿審查區</h2>
+            <div id="reviewContainer">
+                <div class="post-card" id="p-1">
+                    <div class="post-meta"><span>流水號：#TMP-9001</span><span>時間：剛剛</span></div>
+                    <div style="font-size:15px; line-height:1.6;">真心覺得這次學校園遊會的動線規劃得很好，小編能幫忙點個讚傳達給學生會嗎？</div>
+                    <div class="action-group">
+                        <button class="btn-review" style="background-color:var(--danger-color);" onclick="reviewPost('1', '拒絕')">❌ 拒絕</button>
+                        <button class="btn-review" style="background-color:var(--success-color);" onclick="reviewPost('1', '通過')">✅ 核准發布</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="function-block" id="block-admin">
+            <h2>👤 管理員帳號中心</h2>
+            
+            <div class="admin-manager-grid">
+                
+                <div class="admin-form-side">
+                    <form id="addAdminForm">
+                        <div class="form-group">
+                            <label>👤 登入帳號 (Username)</label>
+                            <input type="text" id="newAdminUser" placeholder="請設定英數登入識別碼" required>
+                        </div>
+                        <div class="form-group">
+                            <label>🔑 安全密碼 (Password)</label>
+                            <input type="password" id="newAdminPass" placeholder="請設定高強度密碼" required>
+                        </div>
+                        <div class="form-group">
+                            <label>🏷️ 小編暱稱 (Nickname)</label>
+                            <input type="text" id="newAdminNick" placeholder="例如：二號小編、阿光" required>
+                        </div>
+                        <div class="form-group">
+                            <label>📧 電子郵件 (Email)</label>
+                            <input type="email" id="newAdminEmail" placeholder="小編安全繫結信箱" required>
+                        </div>
+                        <div class="form-group">
+                            <label>🛡️ 系統權限等級</label>
+                            <select id="newAdminLevel">
+                                <option value="一般審核小編">一般審核小編 (僅限審文與公告)</option>
+                                <option value="最高權限管理員">最高權限管理員 (全功能開通)</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn-submit" style="background-color: var(--success-color);">確認建立新管理員</button>
+                    </form>
+                </div>
+
+                <div class="admin-list-side">
+                    <h3>📋 目前在線管理著名冊</h3>
+                    <table id="adminListTable">
+                        <thead>
+                            <tr>
+                                <th>帳號</th>
+                                <th>暱稱</th>
+                                <th>電子郵件</th>
+                                <th>權限</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><b>admin</b></td>
+                                <td>創始小編</td>
+                                <td>admin@ms.gmjh.tyc.edu.tw</td>
+                                <td><span class="badge admin-root">最高權限</span></td>
+                            </tr>
+                            <tr>
+                                <td>gmjh_editor</td>
+                                <td>三號小編</td>
+                                <td>editor3@gmjh.tyc.edu.tw</td>
+                                <td><span class="badge admin-sub">一般審核</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="function-block" id="block-archive">
+            <h2>📦 歷史數據封存中心</h2>
+            <p style="color:#666; font-size:14px; margin-top:0;">此處歸檔已被撤銷或學期常態性移出的匿名歷史數據。</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>原編號</th>
+                        <th>封存原因</th>
+                        <th>封存時間</th>
+                        <th>目前狀態</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>#GMJH-4910</td>
+                        <td>依據用戶申請自行撤文</td>
+                        <td>2026-05-20</td>
+                        <td><span style="color:var(--danger-color); font-weight:bold;">已移出前台</span></td>
+                    </tr>
+                    <tr>
+                        <td>#GMJH-4230</td>
+                        <td>學期結束常態歸檔</td>
+                        <td>2026-01-15</td>
+                        <td><span style="color:#64748b;">唯讀封存</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="function-block" id="block-notice">
+            <h2>🔔 發布前台首頁緊急公告</h2>
+            <form id="noticeForm">
+                <div class="form-group">
+                    <label>公告主題標題</label>
+                    <input type="text" id="noticeTitle" placeholder="例如：後台維護公告 / 學生權益重要宣導" required>
+                </div>
+                <div class="form-group">
+                    <label>公告詳細內容區塊</label>
+                    <textarea id="noticeContent" rows="5" placeholder="請輸入欲呈現在前台頂部的公告內文..." required></textarea>
+                </div>
+                <div class="form-group" style="margin-top: 10px;">
+                     <button type="submit" class="btn-submit" style="background-color: var(--warning-color);">立即推送全站公告</button>
+                </div>
+            </form>
+        </div>
+
+    </div>
+
+    <script>
+        const centerAlert = document.getElementById('centerAlert');
+
+        // 安全攔截機制
+        function checkSecurity() {
+            if (sessionStorage.getItem('adminToken') !== 'true') {
+                document.getElementById('secureOverlay').classList.add('active');
+            }
+        }
+        function redirectToLogin() { window.location.href = 'admin.html'; }
+        checkSecurity();
+
+        // 實體按鈕切換邏輯
+        function showBlock(blockId, buttonId) {
+            document.getElementById('block-review').classList.remove('active');
+            document.getElementById('block-admin').classList.remove('active');
+            document.getElementById('block-archive').classList.remove('active');
+            document.getElementById('block-notice').classList.remove('active');
+            
+            document.getElementById('btnReview').classList.remove('active');
+            document.getElementById('btnAddAdmin').classList.remove('active');
+            document.getElementById('btnArchive').classList.remove('active');
+            document.getElementById('btnNotice').classList.remove('active');
+
+            document.getElementById(blockId).classList.add('active');
+            document.getElementById(buttonId).classList.add('active');
+
+            centerAlert.style.display = 'none';
+        }
+
+        // 【審核文章】動作
+        function reviewPost(id, actionType) {
+            const card = document.getElementById(`p-${id}`);
+            if(card) {
+                card.remove();
+                centerAlert.className = "alert-box success";
+                centerAlert.innerHTML = `📢 <b>處理成功：</b> 文章流水號 #TMP-900${id} 已被判定為【<b>${actionType}</b>】，數據已同步。`;
+            }
+        }
+
+        // ✨ 【新增管理員】表單提交邏輯（按下新增後，會立刻動態加進右邊的名冊表格中！）
+        document.getElementById('addAdminForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // 抓取你要求的所有控制欄位
+            const user = document.getElementById('newAdminUser').value;
+            const pass = document.getElementById('newAdminPass').value; // 密碼通常在後端處理，前端先防呆
+            const nick = document.getElementById('newAdminNick').value;
+            const email = document.getElementById('newAdminEmail').value;
+            const level = document.getElementById('newAdminLevel').value;
+
+            // 1. 動態建立一個新的表格列 (tr)，直接塞進名冊
+            const tableBody = document.querySelector('#adminListTable tbody');
+            const newRow = document.createElement('tr');
+            
+            // 判斷權限並貼上對應的漂亮 Badge
+            const badgeClass = (level === '最高權限管理員') ? 'badge admin-root' : 'badge admin-sub';
+            const badgeText = (level === '最高權限管理員') ? '最高權限' : '一般審核';
+
+            newRow.innerHTML = `
+                <td><b>${user}</b></td>
+                <td>${nick}</td>
+                <td>${email}</td>
+                <td><span class="${badgeClass}">${badgeText}</span></td>
+            `;
+            
+            // 將新小編插入到表格最前面
+            tableBody.insertBefore(newRow, tableBody.firstChild);
+
+            // 2. 彈出美麗的頂部內嵌提示
+            centerAlert.className = "alert-box success";
+            centerAlert.innerHTML = `👤 <b>管理員創建成功！</b> 小編「<b>${nick}</b>」的資料已成功登記並同步加入名冊。`;
+
+            // 3. 自動清空輸入框，方便小編繼續輸入下一筆
+            document.getElementById('newAdminUser').value = '';
+            document.getElementById('newAdminPass').value = '';
+            document.getElementById('newAdminNick').value = '';
+            document.getElementById('newAdminEmail').value = '';
+        });
+
+        // 【發布公告】提交
+        document.getElementById('noticeForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const title = document.getElementById('noticeTitle').value;
+
+            centerAlert.className = "alert-box success";
+            centerAlert.innerHTML = `🔔 <b>全站公告推送成功！</b> 標題：<b>${title}</b> 已呈現在前台。`;
+
+            document.getElementById('noticeTitle').value = '';
+            document.getElementById('noticeContent').value = '';
+        });
+
+        // 【登出】動作
+        function adminLogout() {
+            sessionStorage.removeItem('adminToken');
+            window.location.href = 'admin.html';
+        }
+    </script>
+</body>
+</html>
