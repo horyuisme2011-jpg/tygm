@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>📢 匿名光中 | 全新投稿系統</title>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <script type="text/javascript">
+        emailjs.init("Q-DqSh4FTyMFqBH38"); 
+    </script>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -19,7 +27,6 @@
             position: relative;
         }
 
-        /* 左上角控制區塊 */
         .top-left-controls {
             position: absolute;
             top: 20px;
@@ -68,21 +75,25 @@
         .btn { width: 100%; background-color: #4a90e2; color: white; border: none; padding: 14px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; transition: background 0.3s; }
         .btn:hover { background-color: #357abd; }
         
-        /* 學校電子郵件專用欄位並排樣式 */
+        /* 跳轉用戶中心按鈕的專屬樣式 */
+        .user-center-btn {
+            display: none; 
+            margin-top: 12px;
+            background-color: #5cb85c;
+        }
+        .user-center-btn:hover { background-color: #4cae4c; }
+
         .email-input-group { display: flex; align-items: center; gap: 8px; }
         .email-suffix { font-size: 14px; color: #666; font-weight: bold; white-space: nowrap; background: #eee; padding: 12px; border-radius: 6px; border: 1px solid #ddd; }
         
-        /* 驗證碼發送排版 */
         .verify-group { display: flex; gap: 10px; }
         .verify-btn { background: #5cb85c; color: white; border: none; padding: 0 15px; border-radius: 6px; cursor: pointer; white-space: nowrap; font-weight: bold; }
         .verify-btn:hover { background: #4cae4c; }
+        .verify-btn:disabled { background: #ccc; cursor: not-allowed; }
 
         .footer-links { text-align: center; margin-top: 20px; font-size: 14px; }
         .footer-links a { color: #4a90e2; text-decoration: none; margin: 0 10px; }
 
-        /* ==========================================================================
-           ✨ 彈出式視窗 (Modal) 樣式表
-           ========================================================================== */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -99,7 +110,7 @@
         .modal-card {
             background: #ffffff;
             width: 100%;
-            max-width: 450px; /* 稍微寬一點讓說明文字比較好讀 */
+            max-width: 450px; 
             padding: 30px;
             border-radius: 12px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.15);
@@ -126,7 +137,6 @@
         .modal-card .form-group { margin-bottom: 15px; }
         .modal-card input { padding: 10px; font-size: 15px; }
         
-        /* 說明視窗專用的文字排版 */
         .help-content-box {
             background-color: #f8fafc;
             border: 1px solid #e2e8f0;
@@ -135,16 +145,15 @@
             font-size: 14px;
             line-height: 1.6;
             color: #4a5568;
-            white-space: pre-wrap; /* 保持 JSON 裡面的換行格式 */
+            white-space: pre-wrap; 
             max-height: 300px;
-            overflow-y: auto; /* 內容太多時可以滾動 */
+            overflow-y: auto; 
         }
 
         .modal-sub-links { display: flex; justify-content: space-between; margin-top: 15px; font-size: 13px; }
         .modal-sub-links a { color: #4a90e2; text-decoration: none; cursor: pointer; }
         .modal-sub-links a:hover { text-decoration: underline; }
 
-        /* 📱 響應式排版 (RWD) */
         @media (max-width: 768px) {
             body { padding: 10px; padding-top: 70px; }
             .top-left-controls { top: 10px; left: 10px; gap: 6px; }
@@ -185,14 +194,14 @@
                 <textarea id="postContent" placeholder="請在此輸入你想說的話...（圖片將會自動生成）" required></textarea>
             </div>
             <button type="submit" class="btn">🚀 匿名送出投稿</button>
+            
+            <button type="button" class="btn user-center-btn" id="userCenterBtn" onclick="location.href='user.html'">🔒 進入個人會員中心</button>
         </form>
 
         <div class="footer-links">
-            <a href="status.html">🔍 查詢投稿狀態</a> | 
-            <a href="admin.html">🔒 小編後台</a>
+            <a href="status.html">🔍 查詢投稿狀態</a>
         </div>
     </div>
-
 
     <div class="modal-overlay" id="modalOverlay">
         
@@ -201,8 +210,8 @@
             <h2>🔑 用戶登入</h2>
             <form id="subFormLogin">
                 <div class="form-group">
-                    <label>使用者帳號 / Email</label>
-                    <input type="text" id="loginUser" placeholder="請輸入帳號" required>
+                    <label>使用者帳號 / 學號</label>
+                    <input type="text" id="loginUser" placeholder="請輸入帳號或學號" required>
                 </div>
                 <div class="form-group">
                     <label>密碼</label>
@@ -224,14 +233,14 @@
                     <label>學校電子郵件</label>
                     <div class="email-input-group">
                         <input type="text" id="forgotEmailPrefix" placeholder="學號/帳號" required>
-                        <span class="email-suffix">.ms.gmjh.tyc.edu.tw</span>
+                        <span class="email-suffix">@ms.gmjh.tyc.edu.tw</span>
                     </div>
                 </div>
                 <div class="form-group">
                     <label>驗證碼</label>
                     <div class="verify-group">
                         <input type="text" id="forgotVerifyCode" placeholder="請輸入驗證碼" required>
-                        <button type="button" class="verify-btn" onclick="sendCode('forgot')">發送驗證碼</button>
+                        <button type="button" class="verify-btn" id="forgotCodeBtn" onclick="sendCode('forgot')">發送驗證碼</button>
                     </div>
                 </div>
                 <button type="submit" class="btn" style="padding: 10px; background-color: #5cb85c;">驗證並送出</button>
@@ -247,25 +256,25 @@
             <form id="subFormRegister">
                 <div class="form-group">
                     <label>用戶名稱 (暱稱)</label>
-                    <input type="text" id="regName" placeholder="例如：光中帥哥" required>
+                    <input type="text" id="regName" placeholder="例如：gmjh123" required>
                 </div>
                 <div class="form-group">
                     <label>學校電子郵件</label>
                     <div class="email-input-group">
                         <input type="text" id="regEmailPrefix" placeholder="請輸入學號" required>
-                        <span class="email-suffix">.ms.gmjh.tyc.edu.tw</span>
+                        <span class="email-suffix">@ms.gmjh.tyc.edu.tw</span>
                     </div>
                 </div>
                 <div class="form-group">
                     <label>驗證碼</label>
                     <div class="verify-group">
                         <input type="text" id="regVerifyCode" placeholder="請輸入驗證碼" required>
-                        <button type="button" class="verify-btn" onclick="sendCode('reg')">發送驗證碼</button>
+                        <button type="button" class="verify-btn" id="regCodeBtn" onclick="sendCode('reg')">發送驗證碼</button>
                     </div>
                 </div>
                 <div class="form-group">
                     <label>設定密碼</label>
-                    <input type="password" id="regPass" placeholder="請輸入密碼" required>
+                    <input type="password" id="regPass" placeholder="須包含小寫字母與數字" required>
                 </div>
                 <div class="form-group">
                     <label>再次確認密碼</label>
@@ -290,10 +299,45 @@
     </div>
 
     <script>
-        let configData = {};
+        // 📢 --- 核心金鑰 ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyCENccafho6fKD0IefzsQPiXjAq0tpk3NU",
+            authDomain: "gmservice-80d0d.firebaseapp.com",
+            databaseURL: "https://gmservice-80d0d-default-rtdb.firebaseio.com",
+            projectId: "gmservice-80d0d",
+            storageBucket: "gmservice-80d0d.firebasestorage.app",
+            messagingSenderId: "776618303417",
+            appId: "1:776618303417:web:7e5e0a4eff964413a2a068"
+        };
+        
+        // 初始化 Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
-        // 讀取外部配置 JSON 檔案
+        let configData = {};
+        let generatedCode = ""; 
+
+        // 介面控制：同步左上角按鈕與會員中心按鈕
+        function updateLoginStateUI() {
+            const currentUser = sessionStorage.getItem('currentUser');
+            const loginBtn = document.getElementById('loginBtn');
+            const userCenterBtn = document.getElementById('userCenterBtn');
+            
+            if (currentUser) {
+                loginBtn.innerText = `👤 ${currentUser} (登出)`;
+                loginBtn.style.borderColor = "#5cb85c";
+                loginBtn.style.color = "#5cb85c";
+                userCenterBtn.style.display = "block"; 
+            } else {
+                loginBtn.innerText = "🔑 登入";
+                loginBtn.style.borderColor = "#4a90e2";
+                loginBtn.style.color = "#4a90e2";
+                userCenterBtn.style.display = "none"; 
+            }
+        }
+
         function loadConfig() {
+            updateLoginStateUI(); 
             fetch('./login_question.json')
                 .then(response => response.ok ? response.json() : null)
                 .then(data => {
@@ -304,7 +348,6 @@
                     }
                 })
                 .catch(err => {
-                    console.log("JSON讀取失敗，使用備用文字");
                     configData = {
                         "noticeTitle": "📢 投稿規範與維護公告：",
                         "noticeContent": "請勿包含人身攻擊、洩漏個資或違反校規之內容。",
@@ -317,27 +360,28 @@
         }
         window.onload = loadConfig;
 
-        /* --------------------------------------------------------------------------
-           ✨ Modal 控制：切換、打開、關閉
-           -------------------------------------------------------------------------- */
         const overlay = document.getElementById('modalOverlay');
         
-        // 點左上角登入
         document.getElementById('loginBtn').addEventListener('click', () => {
+            if (sessionStorage.getItem('currentUser')) {
+                if (confirm("確定要登出帳號嗎？")) {
+                    sessionStorage.removeItem('currentUser');
+                    updateLoginStateUI(); 
+                    alert("已成功登出！");
+                }
+                return;
+            }
             overlay.classList.add('active');
             switchCard('cardLogin');
         });
 
-        // ✨ 點左上角問號：改為打開說明卡片，並注入 JSON 文字
         document.getElementById('helpBtn').addEventListener('click', () => {
             document.getElementById('modalHelpTitle').innerText = configData.helpTitle || "💡 使用幫助";
             document.getElementById('modalHelpContent').innerText = configData.helpContent || "暫無說明內容。";
-            
             overlay.classList.add('active');
             switchCard('cardHelp');
         });
 
-        // 點擊空白處關閉
         overlay.addEventListener('click', (e) => {
             if(e.target === overlay) closeModal();
         });
@@ -346,117 +390,259 @@
             overlay.classList.remove('active');
         }
 
-        // 切換不同的卡片 (Login, Forgot, Register, Help)
         function switchCard(cardId) {
             document.querySelectorAll('.modal-card').forEach(card => card.classList.remove('active'));
             document.getElementById(cardId).classList.add('active');
         }
 
-        /* --------------------------------------------------------------------------
-           ⚡ 表單動作模擬與資料格式化
-           -------------------------------------------------------------------------- */
-        
-        // 發送驗證碼函式
         function sendCode(type) {
             let prefix = type === 'reg' ? document.getElementById('regEmailPrefix').value : document.getElementById('forgotEmailPrefix').value;
+            let btn = type === 'reg' ? document.getElementById('regCodeBtn') : document.getElementById('forgotCodeBtn');
+            
             if(!prefix) {
                 alert("請先輸入學校信箱帳號/學號！");
                 return;
             }
-            let fullEmail = prefix + ".ms.gmjh.tyc.edu.tw";
-            alert(`【驗證碼系統】\n已成功將驗證碼發送到：\n${fullEmail}\n\n(請至學校 Gmail 信箱收信，Google API 後續串接中)`);
+            
+            let fullEmail = prefix + "@ms.gmjh.tyc.edu.tw";
+            generatedCode = Math.floor(100000 + Math.random() * 900000).toString();
+            
+            btn.disabled = true;
+            btn.innerText = "發送中...";
+
+            const templateParams = {
+                email: fullEmail,
+                code: generatedCode
+            };
+
+            emailjs.send('gmservice', 'template_kii7aak', templateParams)
+                .then(function(response) {
+                    alert(`【驗證碼系統】\n已成功將驗證碼發送到：\n${fullEmail}\n\n請前往您的學校 Gmail 收信！`);
+                    
+                    let countdown = 60;
+                    btn.innerText = `重新發送 (${countdown}s)`;
+                    let timer = setInterval(() => {
+                        countdown--;
+                        btn.innerText = `重新發送 (${countdown}s)`;
+                        if (countdown <= 0) {
+                            clearInterval(timer);
+                            btn.disabled = false;
+                            btn.innerText = "發送驗證碼";
+                        }
+                    }, 1000);
+
+                }, function(error) {
+                    alert("❌ 驗證碼發送失敗，請檢查 EmailJS 設定。");
+                    console.error('EmailJS 錯誤:', error);
+                    btn.disabled = false;
+                    btn.innerText = "發送驗證碼";
+                });
         }
 
-        // 監聽【1. 登入提交】（前台密碼成功後跳轉到 user.html）
+        // 登入驗證
         document.getElementById('subFormLogin').addEventListener('submit', function(e) {
             e.preventDefault();
-            
             const inputUser = document.getElementById('loginUser').value;
             const inputPass = document.getElementById('loginPass').value;
             
-            // 這裡抓取你設定好的密碼檔（例如 pass.json）
-            fetch('./pass.json')
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error("無法讀取驗證設定檔");
+            db.ref('passuser/' + inputUser).once('value')
+                .then((snapshot) => {
+                    if (snapshot.exists()) {
+                        const userData = snapshot.val();
+                        if (userData.regPass === inputPass) {
+                            executeLoginSuccess(inputUser);
+                            return true;
+                        }
                     }
+                    return db.ref('passuser').orderByChild('regEmailPrefix').equalTo(inputUser).once('value');
+                })
+                .then((snapshot) => {
+                    if (snapshot === true) return true;
+
+                    if (snapshot && snapshot.exists()) {
+                        let userData = Object.values(snapshot.val())[0];
+                        if (userData.regPass === inputPass) {
+                            executeLoginSuccess(userData.regName);
+                            return true;
+                        }
+                    }
+                    return fetch('./pass.json');
+                })
+                .then(response => {
+                    if (response === true) return true;
+                    if (!response || !response.ok) throw new Error();
                     return response.json();
                 })
                 .then(accountData => {
-                    // 驗證輸入的帳密是否與 pass.json 內的 adminUser 與 adminPass 相符
-                    // (以後如果要分一般用戶，可以在 JSON 裡面加欄位，目前先依據你的設定檔比對)
-                    if (inputUser === accountData.adminUser && inputPass === accountData.adminPass) {
-                        
-                        // 鎖定登入按鈕，避免重複點擊
-                        const loginSubmitBtn = document.querySelector('#subFormLogin button[type="submit"]');
-                        if(loginSubmitBtn) {
-                            loginSubmitBtn.innerText = "🚀 驗證成功，跳轉中...";
-                            loginSubmitBtn.style.backgroundColor = "#5cb85c";
-                            loginSubmitBtn.disabled = true;
-                        }
-
-                        // 延遲 0.5 秒讓使用者看到成功狀態，隨即直接跳轉到 user.html
-                        setTimeout(() => {
-                            window.location.href = 'user.html';
-                        }, 500);
-
+                    if (accountData === true) return;
+                    
+                    if (accountData && inputUser === accountData.adminUser && inputPass === accountData.adminPass) {
+                        executeLoginSuccess(inputUser);
                     } else {
-                        // 密碼錯誤時，直接運用現有的說明卡片框架來顯示錯誤，絕對不彈窗
-                        document.getElementById('modalHelpTitle').innerText = "❌ 登入失敗";
-                        document.getElementById('modalHelpContent').innerText = "您輸入的帳號或密碼不正確，請重新檢查。";
-                        switchCard('cardHelp');
+                        showLoginError("您輸入的帳號或密碼不正確，請重新檢查。");
                     }
                 })
                 .catch(error => {
-                    console.error(error);
-                    document.getElementById('modalHelpTitle').innerText = "⚠️ 系統錯誤";
-                    document.getElementById('modalHelpContent').innerText = "無法連線至驗證伺服器，請確保 pass.json 存在且格式正確。";
-                    switchCard('cardHelp');
+                    if (error && error.message !== "SUCCESS") {
+                        showLoginError("帳號密碼不正確，或 Firebase 雲端連線失敗。");
+                    }
                 });
-
-            // 清空密碼欄位防呆
+            
             document.getElementById('loginPass').value = '';
         });
 
-        // 監聽【2. 忘記密碼提交】
+        function executeLoginSuccess(username) {
+            sessionStorage.setItem('currentUser', username);
+            updateLoginStateUI(); 
+            
+            const loginSubmitBtn = document.querySelector('#subFormLogin button[type="submit"]');
+            if(loginSubmitBtn) {
+                loginSubmitBtn.innerText = "🎉 登入成功！";
+                loginSubmitBtn.style.backgroundColor = "#5cb85c";
+                loginSubmitBtn.disabled = true;
+            }
+            
+            setTimeout(() => { 
+                closeModal(); 
+                if(loginSubmitBtn) {
+                    loginSubmitBtn.innerText = "確認登入";
+                    loginSubmitBtn.style.backgroundColor = "#4a90e2";
+                    loginSubmitBtn.disabled = false;
+                }
+            }, 600);
+        }
+
+        function showLoginError(msg) {
+            document.getElementById('modalHelpTitle').innerText = "❌ 登入失敗";
+            document.getElementById('modalHelpContent').innerText = msg;
+            switchCard('cardHelp');
+        }
+
         document.getElementById('subFormForgot').addEventListener('submit', function(e) {
             e.preventDefault();
-            const forgotData = {
-                action: "forgot_password",
-                email: document.getElementById('forgotEmailPrefix').value + ".ms.gmjh.tyc.edu.tw",
-                code: document.getElementById('forgotVerifyCode').value
-            };
-            alert(`驗證碼成功！新密碼重設信已發送至：\n${forgotData.email}`);
+            const inputCode = document.getElementById('forgotVerifyCode').value;
+            if (generatedCode === "" || inputCode !== generatedCode) {
+                alert("❌ 驗證碼錯誤或尚未發送！");
+                return;
+            }
+            alert(`🎉 驗證碼成功！新密碼重設信已發送！`);
+            generatedCode = ""; 
             switchCard('cardLogin');
         });
 
-        // 監聽【3. 註冊提交】
+        // 註冊表單
         document.getElementById('subFormRegister').addEventListener('submit', function(e) {
             e.preventDefault();
+            const regName = document.getElementById('regName').value;
+            const regEmailPrefix = document.getElementById('regEmailPrefix').value;
             const pass = document.getElementById('regPass').value;
             const passConfirm = document.getElementById('regPassConfirm').value;
+            const inputCode = document.getElementById('regVerifyCode').value;
             
-            if(pass !== passConfirm) {
-                alert("❌ 錯誤：兩次輸入的密碼不一致，請重新檢查！");
+            const nameRegex = /^[a-zA-Z0-9]+$/;
+            if (!nameRegex.test(regName)) {
+                alert("❌ 錯誤：用戶名稱只能包含英文字母與數字！");
                 return;
             }
 
-            const registerData = {
-                action: "register",
-                username: document.getElementById('regName').value,
-                email: document.getElementById('regEmailPrefix').value + ".ms.gmjh.tyc.edu.tw",
-                verifyCode: document.getElementById('regVerifyCode').value,
-                password: pass 
-            };
-            alert(`🎉 註冊資料驗證成功！`);
-            closeModal();
+            const passRegex = /^(?=.*[a-z])(?=.*\d).+$/;
+            if (!passRegex.test(pass)) {
+                alert("❌ 錯誤：密碼必須同時包含小寫字母與數字！");
+                return;
+            }
+
+            if(pass !== passConfirm) {
+                alert("❌ 錯誤：兩次輸入的密碼不一致！");
+                return;
+            }
+            if (generatedCode === "" || inputCode !== generatedCode) {
+                alert("❌ 驗證碼錯誤或尚未發送！");
+                return;
+            }
+
+            db.ref('passuser/' + regName).once('value').then((snapshot) => {
+                if (snapshot.exists()) {
+                    alert("❌ 錯誤：此用戶名稱已被註冊，請換一個！");
+                    return;
+                }
+                
+                return db.ref('passuser/' + regName).set({
+                    "regName": regName,
+                    "regEmailPrefix": regEmailPrefix,
+                    "regPass": pass,
+                    "signupTime": new Date().toLocaleString()
+                });
+            }).then(() => {
+                alert(`🎉 註冊成功！您可以直接在左上角進行登入了！`);
+                generatedCode = ""; 
+                switchCard('cardLogin');
+            }).catch((err) => {
+                alert("❌ 寫入雲端失敗，請確認 Firebase 權限。");
+                console.error(err);
+            });
         });
         
-        // 投稿送出
+        // 🛠️ 實體投稿系統：方案 B + 安全流水號交易機制 (徹底消除對接與空資料庫 Bug)
         document.getElementById('postForm').addEventListener('submit', function(event) {
             event.preventDefault();
-            alert('投稿成功！(功能開發中)');
-            document.getElementById('postContent').value = '';
+            
+            const postContent = document.getElementById('postContent').value.trim();
+            const currentUser = sessionStorage.getItem('currentUser');
+            
+            if (!currentUser) {
+                alert("🔒 投稿系統為校內專屬，請先點擊左上角「🔑 登入」或註冊新帳號！");
+                return;
+            }
+
+            if (!postContent) {
+                alert("請輸入投稿內容！");
+                return;
+            }
+
+            const submitBtn = document.querySelector('#postForm button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.innerText = "正在安全遞交中...";
+
+            // 使用原子操作安全計數，哪怕資料庫全新為空，也能完美從 1 開始計算不報錯
+            db.ref('post_counter').transaction((currentCount) => {
+                return (currentCount || 0) + 1;
+            }, (error, committed, snapshot) => {
+                if (error) {
+                    alert('❌ 資料庫對接失敗，請確認 Firebase Rules 的讀寫權限已完全開啟。');
+                    console.error('Firebase Transaction 錯誤:', error);
+                    submitBtn.disabled = false;
+                    submitBtn.innerText = "🚀 匿名送出投稿";
+                    return;
+                }
+
+                if (committed) {
+                    const nextNumber = snapshot.val();
+                    // 自動補零產出 "gm001", "gm002" 格式
+                    const customPostId = "gm" + String(nextNumber).padStart(3, '0');
+
+                    const newPostData = {
+                        postId: "#" + customPostId,
+                        username: currentUser,
+                        content: postContent,
+                        timestamp: new Date().toLocaleString('zh-TW'),
+                        status: "pending"
+                    };
+
+                    db.ref('posts/' + customPostId).set(newPostData)
+                        .then(() => {
+                            alert(`🎉 投稿成功！您的專屬投稿編號為：#${customPostId}\n已安全送至雲端審核中心。`);
+                            document.getElementById('postContent').value = ''; 
+                        })
+                        .catch((err) => {
+                            alert('❌ 投稿寫入失敗，請檢查資料庫 Rules 讀寫權限。');
+                            console.error('Firebase Set 錯誤:', err);
+                        })
+                        .finally(() => {
+                            submitBtn.disabled = false;
+                            submitBtn.innerText = "🚀 匿名送出投稿";
+                        });
+                }
+            });
         });
     </script>
 </body>
