@@ -75,7 +75,6 @@
         .btn { width: 100%; background-color: #4a90e2; color: white; border: none; padding: 14px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; transition: background 0.3s; }
         .btn:hover { background-color: #357abd; }
         
-        /* 跳轉用戶中心按鈕的專屬樣式 */
         .user-center-btn {
             display: none; 
             margin-top: 12px;
@@ -94,10 +93,12 @@
         .footer-links { text-align: center; margin-top: 20px; font-size: 14px; }
         .footer-links a { color: #4a90e2; text-decoration: none; margin: 0 10px; }
 
+        /* 磨砂玻璃燈箱外框層 */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -109,11 +110,11 @@
 
         .modal-card {
             background: #ffffff;
-            width: 100%;
+            width: 90%;
             max-width: 450px; 
             padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            border-radius: 16px;
+            box-shadow: 0 20px 40px -5px rgba(0,0,0,0.15);
             box-sizing: border-box;
             position: relative;
             display: none; 
@@ -121,7 +122,7 @@
         .modal-card.active { display: block; animation: slideUp 0.3s ease; }
 
         @keyframes slideUp {
-            from { transform: translateY(20px); opacity: 0; }
+            from { transform: translateY(25px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
         }
 
@@ -150,6 +151,54 @@
             overflow-y: auto; 
         }
 
+        /* 強制閱讀條款專屬滾動容器 */
+        .notice-scroll-box {
+            background-color: #fff9f0;
+            border: 2px dashed #f59e0b;
+            border-radius: 10px;
+            padding: 18px;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #1e293b;
+            white-space: pre-wrap;
+            max-height: 240px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.03);
+        }
+
+        /* 滾動解鎖按鈕防呆樣式 */
+        .btn-lock {
+            width: 100%;
+            background-color: #cbd5e1;
+            color: #94a3b8;
+            border: none;
+            padding: 14px;
+            font-size: 15px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: not-allowed;
+            transition: all 0.2s ease;
+        }
+        .btn-lock.unlock {
+            background-color: #4a90e2;
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(74, 144, 226, 0.3);
+        }
+        .btn-lock.unlock:hover {
+            background-color: #357abd;
+        }
+
+        .scroll-tip {
+            font-size: 12px;
+            color: #ef4444;
+            text-align: center;
+            margin-bottom: 12px;
+            font-weight: 600;
+            display: block;
+        }
+
         .modal-sub-links { display: flex; justify-content: space-between; margin-top: 15px; font-size: 13px; }
         .modal-sub-links a { color: #4a90e2; text-decoration: none; cursor: pointer; }
         .modal-sub-links a:hover { text-decoration: underline; }
@@ -163,7 +212,7 @@
             .container { padding: 20px; border-radius: 8px; }
             h1 { font-size: 24px; }
             .footer-links a { display: inline-block; margin: 5px 10px; }
-            .modal-card { max-width: 90%; padding: 20px; }
+            .modal-card { max-width: 95%; padding: 20px; }
             .email-suffix { padding: 10px; font-size: 12px; }
         }
     </style>
@@ -205,6 +254,19 @@
 
     <div class="modal-overlay" id="modalOverlay">
         
+        <div class="modal-card" id="cardForceNotice">
+            <h2 id="forceNoticeTitle">⚠️ 投稿前請先閱讀規範</h2>
+            <span class="scroll-tip" id="scrollTip">📜 請將規範滑動到最底部以解鎖按鈕</span>
+            
+            <div class="notice-scroll-box" id="forceNoticeBox" onscroll="handleNoticeScroll()">
+                載入雲端公告條款中...
+            </div>
+            
+            <button type="button" class="btn-lock" id="forceConfirmBtn" disabled onclick="submitPostToFirebase()">
+                我已詳細閱讀並同意遵守上述規範
+            </button>
+        </div>
+
         <div class="modal-card" id="cardLogin">
             <button class="modal-close" onclick="closeModal()">&times;</button>
             <h2>🔑 用戶登入</h2>
@@ -299,7 +361,7 @@
     </div>
 
     <script>
-        // 📢 --- 核心金鑰 ---
+        // --- Firebase 配置 ---
         const firebaseConfig = {
             apiKey: "AIzaSyCENccafho6fKD0IefzsQPiXjAq0tpk3NU",
             authDomain: "gmservice-80d0d.firebaseapp.com",
@@ -310,14 +372,13 @@
             appId: "1:776618303417:web:7e5e0a4eff964413a2a068"
         };
         
-        // 初始化 Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
         let configData = {};
         let generatedCode = ""; 
+        let tempPostContent = ""; // 暫存等待發布的內文
 
-        // 介面控制：同步左上角按鈕與會員中心按鈕
         function updateLoginStateUI() {
             const currentUser = sessionStorage.getItem('currentUser');
             const loginBtn = document.getElementById('loginBtn');
@@ -336,27 +397,30 @@
             }
         }
 
+        // 串接 Firebase 的系統公告
         function loadConfig() {
             updateLoginStateUI(); 
-            fetch('./login_question.json')
-                .then(response => response.ok ? response.json() : null)
-                .then(data => {
-                    if(data) {
-                        configData = data;
-                        document.getElementById('noticeTitle').innerText = data.noticeTitle;
-                        document.getElementById('noticeContent').innerText = data.noticeContent;
-                    }
-                })
-                .catch(err => {
-                    configData = {
-                        "noticeTitle": "📢 投稿規範與維護公告：",
-                        "noticeContent": "請勿包含人身攻擊、洩漏個資或違反校規之內容。",
-                        "helpTitle": "💡 匿名光中 2.0 使用幫助",
-                        "helpContent": "1. 為什麼要登入？\n登入後可解鎖更多校園專屬功能。\n\n2. 匿名性保證：\n本站採用去識別化技術，小編與後台絕對無法查閱您的投稿身分，請安心發言！"
-                    };
-                    document.getElementById('noticeTitle').innerText = configData.noticeTitle;
-                    document.getElementById('noticeContent').innerText = configData.noticeContent;
-                });
+            
+            db.ref('system_notice').on('value', (snapshot) => {
+                if(snapshot.exists()) {
+                    const data = snapshot.val();
+                    document.getElementById('noticeTitle').innerText = `📢 ${data.title} (發布時間: ${data.timestamp})`;
+                    document.getElementById('noticeContent').innerText = data.content;
+                    
+                    document.getElementById('forceNoticeBox').innerText = `【公告標題：${data.title}】\n\n${data.content}\n\n------------------------------\n💡 系統投稿防範提示：\n1. 請勿包含任何人身攻擊、不實謠言、個資洩漏或違反校規之爭議內容。\n2. 本站採用去識別化安全金鑰，後台審核小編絕對無法追溯您的實際帳號身分。\n3. 送出投稿即代表您願意對自己的言論負起完全法律責任。`;
+                } else {
+                    const fallbackTitle = "📢 投稿規範與維護公告：";
+                    const fallbackContent = "請勿包含人身攻擊、洩漏個資或違反校規之內容。";
+                    document.getElementById('noticeTitle').innerText = fallbackTitle;
+                    document.getElementById('noticeContent').innerText = fallbackContent;
+                    document.getElementById('forceNoticeBox').innerText = `${fallbackTitle}\n\n${fallbackContent}`;
+                }
+            });
+
+            configData = {
+                "helpTitle": "💡 匿名光中 2.0 使用幫助",
+                "helpContent": "1. 為什麼要登入？\n登入後可解鎖更多校園專屬功能與狀態查詢。\n\n2. 匿名性保證：\n本站採用去識別化技術，小編與後台絕對無法查閱您的投稿身分，請安心發言！"
+            };
         }
         window.onload = loadConfig;
 
@@ -376,14 +440,18 @@
         });
 
         document.getElementById('helpBtn').addEventListener('click', () => {
-            document.getElementById('modalHelpTitle').innerText = configData.helpTitle || "💡 使用幫助";
-            document.getElementById('modalHelpContent').innerText = configData.helpContent || "暫無說明內容。";
+            document.getElementById('modalHelpTitle').innerText = configData.helpTitle;
+            document.getElementById('modalHelpContent').innerText = configData.helpContent;
             overlay.classList.add('active');
             switchCard('cardHelp');
         });
 
+        // 點擊外框關閉燈箱（若為強制閱讀公告，禁止隨意點擊外部關閉）
         overlay.addEventListener('click', (e) => {
-            if(e.target === overlay) closeModal();
+            const activeCard = document.querySelector('.modal-card.active');
+            if(e.target === overlay && activeCard && activeCard.id !== 'cardForceNotice') {
+                closeModal();
+            }
         });
 
         function closeModal() {
@@ -393,6 +461,37 @@
         function switchCard(cardId) {
             document.querySelectorAll('.modal-card').forEach(card => card.classList.remove('active'));
             document.getElementById(cardId).classList.add('active');
+        }
+
+        // 🌟 核心修正：自動檢查公告內容高度是否短到「不需要滑動」
+        function checkIfScrollRequired() {
+            const box = document.getElementById('forceNoticeBox');
+            const btn = document.getElementById('forceConfirmBtn');
+            const tip = document.getElementById('scrollTip');
+            
+            // 如果實際總高度小於或等於容器高度（外加 5 像素相容小誤差），代表無須捲動
+            if (box.scrollHeight <= box.clientHeight + 5) {
+                btn.disabled = false;
+                btn.classList.add('unlock');
+                tip.innerText = "✅ 本期公告較短，您已閱讀完畢，可直接點擊下方按鈕投稿";
+                tip.style.color = "#10b981";
+            }
+        }
+
+        // 🌟 即時偵測用戶的公告捲軸是否滑動到最底部
+        function handleNoticeScroll() {
+            const box = document.getElementById('forceNoticeBox');
+            const btn = document.getElementById('forceConfirmBtn');
+            const tip = document.getElementById('scrollTip');
+            
+            const isBottom = (box.scrollHeight - box.scrollTop <= box.clientHeight + 5);
+            
+            if (isBottom) {
+                btn.disabled = false;
+                btn.classList.add('unlock');
+                tip.innerText = "✅ 條款已閱讀完畢，可點擊下方按鈕送出投稿";
+                tip.style.color = "#10b981";
+            }
         }
 
         function sendCode(type) {
@@ -582,7 +681,7 @@
             });
         });
         
-        // 🛠️ 實體投稿系統：方案 B + 安全流水號交易機制 (徹底消除對接與空資料庫 Bug)
+        // 攔截點擊事件，進行身分驗證並強推公告視窗
         document.getElementById('postForm').addEventListener('submit', function(event) {
             event.preventDefault();
             
@@ -599,31 +698,55 @@
                 return;
             }
 
-            const submitBtn = document.querySelector('#postForm button[type="submit"]');
-            submitBtn.disabled = true;
-            submitBtn.innerText = "正在安全遞交中...";
+            // 1. 暫存貼文內容並初始化解鎖按鈕
+            tempPostContent = postContent;
+            
+            const confirmBtn = document.getElementById('forceConfirmBtn');
+            const tip = document.getElementById('scrollTip');
+            const scrollBox = document.getElementById('forceNoticeBox');
+            
+            confirmBtn.disabled = true;
+            confirmBtn.classList.remove('unlock');
+            tip.innerText = "📜 請將規範滑動到最底部以解鎖按鈕";
+            tip.style.color = "#ef4444";
+            scrollBox.scrollTop = 0; // 重設捲軸到最上方
 
-            // 使用原子操作安全計數，哪怕資料庫全新為空，也能完美從 1 開始計算不報錯
+            // 2. 開啟燈箱並引導用戶到強制閱讀區
+            overlay.classList.add('active');
+            switchCard('cardForceNotice');
+
+            // 🌟 核心修正：過 100 毫秒燈箱過渡完畢後，立刻判斷該公告是否免滑動解鎖
+            setTimeout(checkIfScrollRequired, 100);
+        });
+
+        // 完全看完了，點下「已詳細閱讀」按鈕後的真實送出函式
+        function submitPostToFirebase() {
+            if (!tempPostContent) return;
+
+            const currentUser = sessionStorage.getItem('currentUser');
+            const submitBtn = document.getElementById('forceConfirmBtn');
+            
+            submitBtn.disabled = true;
+            submitBtn.innerText = "安全遞交數據中...";
+
             db.ref('post_counter').transaction((currentCount) => {
                 return (currentCount || 0) + 1;
             }, (error, committed, snapshot) => {
                 if (error) {
-                    alert('❌ 資料庫對接失敗，請確認 Firebase Rules 的讀寫權限已完全開啟。');
-                    console.error('Firebase Transaction 錯誤:', error);
+                    alert('❌ 資料庫對接失敗，請確認 Firebase Rules 讀寫權限。');
                     submitBtn.disabled = false;
-                    submitBtn.innerText = "🚀 匿名送出投稿";
+                    submitBtn.innerText = "我已詳細閱讀並同意遵守上述規範";
                     return;
                 }
 
                 if (committed) {
                     const nextNumber = snapshot.val();
-                    // 自動補零產出 "gm001", "gm002" 格式
                     const customPostId = "gm" + String(nextNumber).padStart(3, '0');
 
                     const newPostData = {
                         postId: "#" + customPostId,
                         username: currentUser,
-                        content: postContent,
+                        content: tempPostContent,
                         timestamp: new Date().toLocaleString('zh-TW'),
                         status: "pending"
                     };
@@ -632,18 +755,20 @@
                         .then(() => {
                             alert(`🎉 投稿成功！您的專屬投稿編號為：#${customPostId}\n已安全送至雲端審核中心。`);
                             document.getElementById('postContent').value = ''; 
+                            tempPostContent = ""; // 清空暫存
+                            closeModal();
                         })
                         .catch((err) => {
-                            alert('❌ 投稿寫入失敗，請檢查資料庫 Rules 讀寫權限。');
-                            console.error('Firebase Set 錯誤:', err);
+                            alert('❌ 投稿寫入失敗，請檢查權限。');
+                            console.error(err);
                         })
                         .finally(() => {
                             submitBtn.disabled = false;
-                            submitBtn.innerText = "🚀 匿名送出投稿";
+                            submitBtn.innerText = "我已詳細閱讀並同意遵守上述規範";
                         });
                 }
             });
-        });
+        }
     </script>
 </body>
 </html>
