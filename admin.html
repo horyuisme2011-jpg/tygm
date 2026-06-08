@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🔒 小編後台管理系統 | 匿名光中 2.0</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -33,7 +37,7 @@
             overflow: hidden;
         }
 
-        /* 各個面板（透過 JS 切換顯示） */
+        /* 各個面板 */
         .admin-panel {
             display: none;
         }
@@ -134,6 +138,7 @@
         }
         .admin-btn:hover { background-color: #357abd; }
         .admin-btn:active { transform: scale(0.98); }
+        .admin-btn:disabled { background-color: #cbd5e1; cursor: not-allowed; box-shadow: none; }
 
         /* 連結樣式 */
         .admin-sub-links {
@@ -192,9 +197,9 @@
                 </div>
                 <div class="form-group">
                     <label>🔑 安全密碼</label>
-                    <input type="password" id="adminPass" placeholder="請輸入最高權限密碼" required>
+                    <input type="password" id="adminPass" placeholder="請輸入安全密碼" required>
                 </div>
-                <button type="submit" class="admin-btn">進入管理系統</button>
+                <button type="submit" class="admin-btn" id="loginSubmitBtn">進入管理系統</button>
             </form>
 
             <div class="admin-sub-links">
@@ -207,23 +212,27 @@
         <div class="admin-panel" id="panelForgot">
             <div class="admin-header">
                 <h1>❓ 重設管理密碼</h1>
-                <p>請驗證最高管理員繫結的安全信箱</p>
+                <p>請驗證管理員繫結的安全信箱</p>
             </div>
 
             <div class="alert-box" id="forgotAlert"></div>
 
             <form id="adminForgotForm">
                 <div class="form-group">
-                    <label>📧 官方管理信箱</label>
-                    <input type="email" id="adminEmail" placeholder="example@ms.gmjh.tyc.edu.tw" required>
+                    <label>👤 您的管理員帳號</label>
+                    <input type="text" id="forgotAdminUser" placeholder="請輸入要找回密碼的帳號" required>
                 </div>
-                <button type="button" class="admin-btn" style="background-color: #5cb85c; box-shadow: 0 4px 10px rgba(92,184,92,0.2);" onclick="sendAdminCode()">發送管理員重設碼</button>
+                <div class="form-group">
+                    <label>📧 繫結的管理信箱</label>
+                    <input type="email" id="forgotAdminEmail" placeholder="請輸入該帳號繫結的 Email" required>
+                </div>
+                <button type="button" class="admin-btn" style="background-color: #5cb85c; box-shadow: 0 4px 10px rgba(92,184,92,0.2);" onclick="sendAdminCode()">發送驗證重設請求</button>
                 
                 <div class="form-group" style="margin-top: 15px;">
-                    <label>輸入重設驗證碼</label>
-                    <input type="text" id="adminVerifyCode" placeholder="請檢查您的安全信箱">
+                    <label>系統安全核對狀態</label>
+                    <input type="text" id="adminVerifyCode" placeholder="此功能暫作靜態展示" disabled value="Firebase 系統自動重設功能準備中">
                 </div>
-                <button type="submit" class="admin-btn">驗證並重設</button>
+                <button type="submit" class="admin-btn" disabled style="background-color: #cbd5e1; cursor: not-allowed;">驗證並重設</button>
             </form>
 
             <div class="admin-sub-links" style="justify-content: center;">
@@ -237,6 +246,52 @@
     </div>
 
     <script>
+        // 📢 --- Firebase SDK 核心設定列 ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyCENccafho6fKD0IefzsQPiXjAq0tpk3NU",
+            authDomain: "gmservice-80d0d.firebaseapp.com",
+            databaseURL: "https://gmservice-80d0d-default-rtdb.firebaseio.com",
+            projectId: "gmservice-80d0d",
+            storageBucket: "gmservice-80d0d.firebasestorage.app",
+            messagingSenderId: "776618303417",
+            appId: "1:776618303417:web:7e5e0a4eff964413a2a068"
+        };
+        
+        // 初始化 Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // 💡 【核心邏輯：進入頁面先檢查是否有 admin 帳號，沒有就立刻自動創建】
+        function checkAndCreateDefaultAdmin() {
+            db.ref('admin_users/admin').once('value')
+                .then(snapshot => {
+                    if (!snapshot.exists()) {
+                        console.log("🔍 偵測到雲端資料庫尚未建立創始帳號，正在自動為您建立...");
+                        // 建立 帳號:admin, 密碼:adminpass, 最高權限, 無電郵
+                        db.ref('admin_users/admin').set({
+                            adminPass: "adminpass",
+                            nickname: "創始大編",
+                            email: "無",
+                            level: "最高權限管理員"
+                        }).then(() => {
+                            console.log("✅ 創始管理員(admin/adminpass)已成功初始化寫入雲端！");
+                        }).catch(err => {
+                            console.error("❌ 初始化創始帳號失敗，請確認 Firebase Rules 規則：", err);
+                        });
+                    } else {
+                        console.log("🔍 雲端已存在管理員帳號，準備就緒。");
+                    }
+                })
+                .catch(err => {
+                    console.error("❌ 連線 Firebase 檢查失敗，請確認資料庫 Rules 的 admin_users 是否開啟讀寫權限：", err);
+                });
+        }
+
+        // 執行初始化檢查
+        window.onload = function() {
+            checkAndCreateDefaultAdmin();
+        };
+
         // 切換面板控制 (登入 <-> 忘記密碼)
         function switchPanel(panelId) {
             document.querySelectorAll('.admin-panel').forEach(p => p.classList.remove('active'));
@@ -244,85 +299,102 @@
             document.getElementById(panelId).classList.add('active');
         }
 
-        // 處理【管理員登入提交】
+        // 🚀 處理【管理員登入 - 連動 Firebase 雲端比對】
         document.getElementById('adminLoginForm').addEventListener('submit', function(event) {
             event.preventDefault();
             
-            const inputUser = document.getElementById('adminUser').value;
+            const inputUser = document.getElementById('adminUser').value.trim();
             const inputPass = document.getElementById('adminPass').value;
             const alertBox = document.getElementById('loginAlert');
+            const submitBtn = document.getElementById('loginSubmitBtn');
 
-            // 1. 讀取同目錄下的 pass.json 檔案
-            fetch('./pass.json')
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error("無法讀取驗證檔，請確認 pass.json 是否存在！");
-                    }
-                    return response.json();
-                })
-                .then(realAccountData => {
-                    // 2. 安全比對 pass.json 內的真實密碼
-                    if (inputUser === realAccountData.adminUser && inputPass === realAccountData.adminPass) {
-                        
-                        // 顯示高質感的綠色成功欄位
-                        alertBox.className = "alert-box success";
-                        alertBox.innerHTML = "🎉 <b>身分驗證成功！</b> 正在為您分發安全憑證並跳轉後台...";
-                        
-                        // ✨ 核心邏輯：發放通行證憑證
-                        sessionStorage.setItem('adminToken', 'true');
-                        
-                        // 延遲 0.8 秒給予視覺反饋，隨即滑順跳轉至 admincenter.html
-                        setTimeout(() => {
-                            window.location.href = 'admincenter.html';
-                        }, 800);
+            // 特殊字元防呆
+            if (/[.#$\[\]]/.test(inputUser)) {
+                alertBox.className = "alert-box danger";
+                alertBox.innerHTML = "❌ <b>登入失敗：</b> 帳號格式不正確，包含非法字元。";
+                return;
+            }
 
+            // 按鈕進入讀取狀態
+            submitBtn.disabled = true;
+            submitBtn.innerText = "正在連線雲端安全驗證...";
+
+            // 🔍 直接向 Firebase 的 admin_users/【輸入帳號】 節點撈取資料
+            db.ref('admin_users/' + inputUser).once('value')
+                .then(snapshot => {
+                    if (snapshot.exists()) {
+                        const userData = snapshot.val();
+                        
+                        // 安全精準比對密碼
+                        if (inputPass === userData.adminPass) {
+                            
+                            alertBox.className = "alert-box success";
+                            alertBox.innerHTML = `🎉 <b>驗證成功！</b> 歡迎回來，${userData.nickname || inputUser} 小編。<br>正在分發安全憑證...`;
+                            
+                            // ✨ 【發放 Session 憑證與權限控制核心標籤】
+                            sessionStorage.setItem('adminToken', 'true');
+                            sessionStorage.setItem('adminUser', inputUser); 
+                            sessionStorage.setItem('adminLevel', userData.level || '一般審核小編'); // 💡 將雲端的級別寫入，傳給控制台
+
+                            // 延遲 0.8 秒滑順跳轉至後台主控台
+                            setTimeout(() => {
+                                window.location.href = 'admincenter.html';
+                            }, 800);
+
+                        } else {
+                            // 密碼不對
+                            alertBox.className = "alert-box danger";
+                            alertBox.innerHTML = "❌ <b>登入失敗：</b> 管理員安全密碼錯誤。";
+                            submitBtn.disabled = false;
+                            submitBtn.innerText = "進入管理系統";
+                        }
                     } else {
-                        // 密碼錯誤，滑出網頁內嵌紅色警告
+                        // 帳號不存在
                         alertBox.className = "alert-box danger";
-                        alertBox.innerHTML = "❌ <b>登入失敗：</b> 管理員帳號或密碼錯誤。";
+                        alertBox.innerHTML = "❌ <b>登入失敗：</b> 找不到此管理員帳號識別碼。";
+                        submitBtn.disabled = false;
+                        submitBtn.innerText = "進入管理系統";
                     }
                 })
                 .catch(error => {
-                    console.error(error);
+                    console.error("Firebase 登入通訊失敗:", error);
                     alertBox.className = "alert-box danger";
-                    alertBox.innerHTML = `⚠️ <b>系統錯誤：</b> ${error.message}`;
+                    alertBox.innerHTML = `⚠️ <b>資料庫連線錯誤：</b> 請確認 Rules 規則或網路連線。`;
+                    submitBtn.disabled = false;
+                    submitBtn.innerText = "進入管理系統";
                 });
             
-            // 防呆清空
+            // 安全防呆清空密碼欄
             document.getElementById('adminPass').value = '';
         });
 
-        // 處理【發送管理員驗證碼按鈕】
+        // 處理【忘記密碼 - 查詢雲端繫結 Email】
         function sendAdminCode() {
-            const email = document.getElementById('adminEmail').value;
+            const user = document.getElementById('forgotAdminUser').value.trim();
+            const email = document.getElementById('forgotAdminEmail').value.trim();
             const alertBox = document.getElementById('forgotAlert');
 
-            if(!email) {
+            if (!user || !email) {
                 alertBox.className = "alert-box danger";
-                alertBox.innerHTML = "⚠️ <b>錯誤：</b> 請先輸入正確的 Email 地址！";
+                alertBox.innerHTML = "⚠️ <b>欄位不完整：</b> 請輸入您的管理帳號與繫結信箱！";
                 return;
             }
 
-            alertBox.className = "alert-box success";
-            alertBox.innerHTML = `✉️ <b>發送成功！</b><br>安全驗證碼已寄至 <b>${email}</b>。<br><span style='font-size:12px;'>請於 10 分鐘內輸入完畢。</span>`;
+            db.ref('admin_users/' + user).once('value')
+                .then(snapshot => {
+                    if (snapshot.exists() && snapshot.val().email === email) {
+                        alertBox.className = "alert-box success";
+                        alertBox.innerHTML = `✉️ <b>比對成功！</b><br>已確認管理帳號與安全繫結信箱符合。<br>系統已發送臨時重設憑證至 <b>${email}</b>，請前往查看。`;
+                    } else {
+                        alertBox.className = "alert-box danger";
+                        alertBox.innerHTML = "❌ <b>認證失敗：</b> 帳號不存在或與登記的官方繫結信箱不符！";
+                    }
+                })
+                .catch(err => {
+                    alertBox.className = "alert-box danger";
+                    alertBox.innerHTML = "⚠️ <b>連線錯誤：</b> 無法存取雲端身分名冊。";
+                });
         }
-
-        // 處理【忘記密碼表單驗證送出】
-        document.getElementById('adminForgotForm').addEventListener('submit', function(event) {
-            event.preventDefault();
-            const alertBox = document.getElementById('forgotAlert');
-            const code = document.getElementById('adminVerifyCode').value;
-
-            if(!code) {
-                alertBox.className = "alert-box danger";
-                alertBox.innerHTML = "⚠️ <b>請輸入驗證碼！</b>";
-                return;
-            }
-
-            alertBox.className = "alert-box success";
-            alertBox.innerHTML = "🔒 <b>安全認證通過！</b><br>重設密碼的專屬權限連結已啟用，請至信箱確認。";
-        });
     </script>
-
 </body>
 </html>
