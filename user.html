@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>👤 學生會員中心 | 匿名光中 2.0</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -150,6 +154,16 @@
         .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
         .badge.success { background-color: #e6f4ea; color: #137333; }
         .badge.warning { background-color: #fef7e0; color: #b06000; }
+        .badge.danger { background-color: #fce8e6; color: #c5221f; }
+
+        .back-home-link {
+            margin-top: 20px;
+            text-decoration: none;
+            color: #4a90e2;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .back-home-link:hover { text-decoration: underline; }
 
         @media (max-width: 600px) {
             .tabs-nav { flex-direction: column; gap: 5px; }
@@ -162,7 +176,7 @@
 
     <div class="user-header-bar">
         <div class="user-info">
-            <span>👤 歡迎回來，光中同學</span>
+            <span id="welcomeMessage">實時載入中...</span>
         </div>
         <button class="logout-btn" id="logoutBtn">登出系統</button>
     </div>
@@ -189,16 +203,9 @@
                         <th>目前狀態</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="postsTableBody">
                     <tr>
-                        <td>#GMJH-5021</td>
-                        <td>今天午餐的桶餐肉片超大塊...</td>
-                        <td><span class="badge success">已發布</span></td>
-                    </tr>
-                    <tr>
-                        <td>#GMJH-5048</td>
-                        <td>有人撿到藍色的原子筆嗎？在二樓...</td>
-                        <td><span class="badge warning">審核中</span></td>
+                        <td colspan="3" style="text-align: center; color: #999;">正在連線雲端資料庫拉取歷史紀錄...</td>
                     </tr>
                 </tbody>
             </table>
@@ -208,14 +215,14 @@
             <h2>🗑️ 快速撤銷匿名文章申請</h2>
             <form id="deleteForm">
                 <div class="form-group">
-                    <label>請選擇或輸入要撤銷的文章編號</label>
-                    <input type="text" id="deletePostId" placeholder="例如：#GMJH-5021" required>
+                    <label>請輸入要撤銷的文章編號</label>
+                    <input type="text" id="deletePostId" placeholder="例如：#gm001" required>
                 </div>
                 <div class="form-group">
                     <label>請簡述撤文理由（僅供後台小編核對）</label>
                     <textarea id="deleteReason" placeholder="例如：不小心打錯字、內容有誤等..." style="height: 100px;" required></textarea>
                 </div>
-                <button type="submit" class="btn" style="background-color: #d93025;">提交撤文申請</button>
+                <button type="submit" class="btn" style="background-color: #d93025;" id="deleteSubmitBtn">提交撤文申請</button>
             </form>
         </div>
 
@@ -228,55 +235,157 @@
                 </div>
                 <div class="form-group">
                     <label>設定全新密碼</label>
-                    <input type="password" id="newPass" required>
+                    <input type="password" id="newPass" placeholder="須包含小寫字母與數字" required>
                 </div>
                 <div class="form-group">
                     <label>再次確認全新密碼</label>
                     <input type="password" id="confirmNewPass" required>
                 </div>
-                <button type="submit" class="btn">確認更新密碼</button>
+                <button type="submit" class="btn" id="passwordSubmitBtn">確認更新密碼</button>
             </form>
         </div>
 
     </div>
 
+    <a href="index.html" class="back-home-link">⬅️ 返回匿名光中首頁</a>
+
     <script>
+        // 📢 --- 核心金鑰 (保持與首頁 index.html 完全一致) ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyCENccafho6fKD0IefzsQPiXjAq0tpk3NU",
+            authDomain: "gmservice-80d0d.firebaseapp.com",
+            databaseURL: "https://gmservice-80d0d-default-rtdb.firebaseio.com",
+            projectId: "gmservice-80d0d",
+            storageBucket: "gmservice-80d0d.firebasestorage.app",
+            messagingSenderId: "776618303417",
+            appId: "1:776618303417:web:7e5e0a4eff964413a2a068"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
         const alertBox = document.getElementById('userAlert');
+        const currentUser = sessionStorage.getItem('currentUser');
+
+        // 安全機制：如果未登入，禁止存取，直接踢回首頁
+        if (!currentUser) {
+            alert("🔒 偵測到未登入非法存取，請先進行登入！");
+            window.location.href = 'index.html';
+        } else {
+            document.getElementById('welcomeMessage').innerText = `👤 歡迎回來，${currentUser} 同學`;
+        }
+
+        // 頁面加載時自動讀取用戶自己的投稿紀錄
+        function fetchUserPosts() {
+            const tableBody = document.getElementById('postsTableBody');
+            
+            db.ref('posts').orderByChild('username').equalTo(currentUser).once('value')
+                .then((snapshot) => {
+                    tableBody.innerHTML = ''; // 清空加載中提示
+                    
+                    if (!snapshot.exists()) {
+                        tableBody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: #999;">您目前尚無任何匿名投稿紀錄。</td></tr>`;
+                        return;
+                    }
+
+                    // 循環渲染每一筆資料
+                    snapshot.forEach((childSnapshot) => {
+                        const post = childSnapshot.val();
+                        const tr = document.createElement('tr');
+                        
+                        // 處理狀態標籤顏色
+                        let statusBadge = '';
+                        if (post.status === 'pending') {
+                            statusBadge = `<span class="badge warning">審核中</span>`;
+                        } else if (post.status === 'approved') {
+                            statusBadge = `<span class="badge success">已發布</span>`;
+                        } else {
+                            statusBadge = `<span class="badge danger">已駁回</span>`;
+                        }
+
+                        // 內容摘要截取前 25 個字
+                        const summary = post.content.length > 25 ? post.content.substring(0, 25) + "..." : post.content;
+
+                        tr.innerHTML = `
+                            <td><b>${post.postId}</b></td>
+                            <td>${escapeHtml(summary)}</td>
+                            <td>${statusBadge}</td>
+                        `;
+                        tableBody.appendChild(tr);
+                    });
+                })
+                .catch((err) => {
+                    console.error("撈取投稿錯誤:", err);
+                    tableBody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: #e06666;">讀取雲端失敗，請確認資料庫權限 Rules。</td></tr>`;
+                });
+        }
+        window.onload = fetchUserPosts;
+
+        // 防 XSS 注入安全小工具
+        function escapeHtml(text) {
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
 
         // 1. 頁籤切換控制
         function switchTab(event, panelId) {
-            // 切換按鈕 active 樣式
             document.querySelectorAll('.tab-link').forEach(btn => btn.classList.remove('active'));
             event.currentTarget.classList.add('active');
-
-            // 切換面板顯示
             document.querySelectorAll('.content-panel').forEach(panel => panel.classList.remove('active'));
             document.getElementById(panelId).classList.add('active');
-
-            // 切換頁籤時順便隱藏先前的提示框
             alertBox.style.display = 'none';
         }
 
-        // 2. 監聽【撤文表單提交】
+        // 2. 監聽【撤文表單提交】(寫入到資料庫新節點 delete_requests)
         document.getElementById('deleteForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            const postId = document.getElementById('deletePostId').value;
-            
-            // 內嵌成功提示
-            alertBox.className = "alert-box success";
-            alertBox.innerHTML = `🗑️ <b>申請成功送出！</b><br>文章編號 <b>${postId}</b> 的撤文申請已派發給管理員，請稍候。`;
-            
-            // 清空輸入框
-            document.getElementById('deletePostId').value = '';
-            document.getElementById('deleteReason').value = '';
+            const postId = document.getElementById('deletePostId').value.trim();
+            const reason = document.getElementById('deleteReason').value.trim();
+            const submitBtn = document.getElementById('deleteSubmitBtn');
+
+            submitBtn.disabled = true;
+            submitBtn.innerText = "提交中...";
+
+            const requestData = {
+                postId: postId,
+                username: currentUser,
+                reason: reason,
+                timestamp: new Date().toLocaleString('zh-TW'),
+                status: "pending"
+            };
+
+            // 存入資料庫的撤文申請區
+            db.ref('delete_requests').push(requestData)
+                .then(() => {
+                    alertBox.className = "alert-box success";
+                    alertBox.innerHTML = `🗑️ <b>申請成功送出！</b><br>文章編號 <b>${postId}</b> 的撤文申請已上傳至後台，審核通過後將自動下架。`;
+                    document.getElementById('deletePostId').value = '';
+                    document.getElementById('deleteReason').value = '';
+                })
+                .catch((err) => {
+                    alertBox.className = "alert-box danger";
+                    alertBox.innerHTML = `❌ <b>提交失敗：</b> 無法寫入雲端，請確認資料庫規則已開啟 delete_requests。`;
+                    console.error(err);
+                })
+                .finally(() => {
+                    submitBtn.disabled = false;
+                    submitBtn.innerText = "提交撤文申請";
+                });
         });
 
-        // 3. 監聽【密碼修改表單提交】
+        // 3. 監聽【密碼修改表單提交】(修改雲端 passuser 的數據)
         document.getElementById('passwordForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const oldPass = document.getElementById('oldPass').value;
             const newPass = document.getElementById('newPass').value;
             const confirmNewPass = document.getElementById('confirmNewPass').value;
+            const submitBtn = document.getElementById('passwordSubmitBtn');
+
+            const passRegex = /^(?=.*[a-z])(?=.*\d).+$/;
+            if (!passRegex.test(newPass)) {
+                alertBox.className = "alert-box danger";
+                alertBox.innerHTML = "❌ <b>修改失敗：</b> 新密碼必須同時包含小寫字母與數字！";
+                return;
+            }
 
             if (newPass !== confirmNewPass) {
                 alertBox.className = "alert-box danger";
@@ -284,20 +393,54 @@
                 return;
             }
 
-            // 模擬修改成功
-            alertBox.className = "alert-box success";
-            alertBox.innerHTML = "🎉 <b>密碼修改成功！</b> 下次登入請記得使用新密碼。";
+            submitBtn.disabled = true;
+            submitBtn.innerText = "正在驗證並更新...";
 
-            // 清空輸入框
-            document.getElementById('oldPass').value = '';
-            document.getElementById('newPass').value = '';
-            document.getElementById('confirmNewPass').value = '';
+            // 讀取目前的密碼進行比對
+            db.ref('passuser/' + currentUser).once('value')
+                .then((snapshot) => {
+                    if (snapshot.exists()) {
+                        const userData = snapshot.val();
+                        if (userData.regPass !== oldPass) {
+                            throw new Error("OLD_PASSWORD_INCORRECT");
+                        }
+                        
+                        // 密碼正確，更新雲端密碼
+                        return db.ref('passuser/' + currentUser).update({
+                            regPass: newPass
+                        });
+                    } else {
+                        throw new Error("USER_NOT_FOUND");
+                    }
+                })
+                .then(() => {
+                    alertBox.className = "alert-box success";
+                    alertBox.innerHTML = "🎉 <b>密碼修改成功！</b> 雲端密碼已同步更新，下次登入請記得使用新密碼。";
+                    document.getElementById('oldPass').value = '';
+                    document.getElementById('newPass').value = '';
+                    document.getElementById('confirmNewPass').value = '';
+                })
+                .catch((err) => {
+                    alertBox.className = "alert-box danger";
+                    if (err.message === "OLD_PASSWORD_INCORRECT") {
+                        alertBox.innerHTML = "❌ <b>修改失敗：</b> 您輸入的「目前舊密碼」不正確！";
+                    } else {
+                        alertBox.innerHTML = "❌ <b>修改失敗：</b> 雲端連線失敗或無修改權限。";
+                    }
+                    console.error(err);
+                })
+                .finally(() => {
+                    submitBtn.disabled = false;
+                    submitBtn.innerText = "確認更新密碼";
+                });
         });
 
         // 4. 監聽【登出按鈕】
         document.getElementById('logoutBtn').addEventListener('click', function() {
-            // 登出也不用彈窗，按下去後直接清除狀態（可自行追加清除 LocalStorage）並返回首頁
-            window.location.href = 'index.html';
+            if (confirm("確定要登出學生會員中心嗎？")) {
+                sessionStorage.removeItem('currentUser');
+                window.location.href = 'index.html';
+            }
         });
     </script>
 </body>
